@@ -13,14 +13,28 @@ class BLayersList(bpy.types.UIList):
             # view operators
             icon = 'RESTRICT_VIEW_OFF' if context.scene.layers[item.index] else 'RESTRICT_VIEW_ON'
             #op = row.prop(item,"hide", text="", emboss=False, icon=icon)
-            row.prop(context.scene,"layers",index = item.index, text="", emboss=False, icon=icon)
 
-            row.prop(item, "name", text="", emboss=False)
-            #row.label(str(item.index))
-            # lock operator
-            if context.object and context.object.layers[item.index] :
-                row.label(icon='LAYER_ACTIVE')
+            if item.type == 'GROUP' :
+                hide_icon = 'VISIBLE_IPO_OFF' if item.hide else 'VISIBLE_IPO_ON'
+                expand_icon = 'TRIA_DOWN' if item.expand else 'TRIA_RIGHT'
+                row.prop(item,'hide',icon =hide_icon ,text='', emboss=False)
+                row.prop(item,'expand',icon =expand_icon ,text='', emboss=False)
+                row.prop(item, "name", text="", emboss=False,icon= 'FILE_FOLDER' )
+                row.separator()
+                row.operator("blayers.move_in_group",icon = 'SCREEN_BACK',text='',emboss= False).index = index
 
+            else :
+                row.prop(context.scene,"layers",index = item.index, text="", emboss=False, icon=icon)
+                if item.id in [l.id for l in context.scene.BLayers.layers if l.type == 'GROUP'] :
+                    row.separator()
+                    row.separator()
+
+                row.prop(item, "name", text="", emboss=False)
+                if context.object and context.object.layers[item.index] :
+                    row.label(icon='LAYER_ACTIVE')
+
+                elif [o for o in context.scene.objects if o.layers[item.index]]:
+                    row.label(icon='LAYER_USED')
             icon = 'LOCKED' if item.lock else 'UNLOCKED'
             op = row.prop(item,"lock", text="", emboss=False, icon=icon)
 
@@ -63,8 +77,6 @@ class GPLayerPanel(bpy.types.Panel) :
 
         col = row.column(align = True)
 
-
-
         col.template_list("BLayersList", "", BLayers, "layers", BLayers, "active_index", rows=6)
 
         rightCol = row.column()
@@ -73,18 +85,18 @@ class GPLayerPanel(bpy.types.Panel) :
         add = sub.operator("blayers.add_layer", icon='ZOOMIN', text="")
         remove = sub.operator("blayers.remove_layer", icon='ZOOMOUT', text="")
 
-        if len(BLayers.layers) > 1:
-            rightCol.separator()
+        #if len(BLayers.layers) > 1:
+        rightCol.separator()
 
-            sub = rightCol.column(align=True)
-            sub.operator("blayers.layer_move", icon='TRIA_UP', text="").step = -1
-            sub.operator("blayers.layer_move", icon='TRIA_DOWN', text="").step = 1
+        sub = rightCol.column(align=True)
+        sub.operator("blayers.layer_move", icon='TRIA_UP', text="").step = -1
+        sub.operator("blayers.layer_move", icon='TRIA_DOWN', text="").step = 1
 
-            rightCol.separator()
+        rightCol.separator()
 
-            sub = rightCol.column(align=True)
-            #add = sub.operator("blayers.add_remove_layer", icon='FILE_FOLDER', text="")
-            #add.operation,add.layer,add.type = "ADD", repr(gpl),'GROUP'
-
-            sub.operator("blayers.toogle_layer_lock", icon='LOCKED', text="")
-            sub.operator("blayers.toogle_layer_hide", icon='RESTRICT_VIEW_OFF', text="")
+        sub = rightCol.column(align=True)
+        #add = sub.operator("blayers.add_remove_layer", icon='FILE_FOLDER', text="")
+        #add.operation,add.layer,add.type = "ADD", repr(gpl),'GROUP'
+        sub.operator("blayers.add_group", icon='FILE_FOLDER', text="")
+        sub.operator("blayers.toogle_layer_lock", icon='LOCKED', text="")
+        sub.operator("blayers.toogle_layer_hide", icon='RESTRICT_VIEW_OFF', text="")

@@ -155,10 +155,61 @@ class RemoveLayer(bpy.types.Operator):
     def execute(self, context):
         scene = context.scene
         BLayers = scene.BLayers
-        index = BLayers.active_index
+        col_index = BLayers.active_index
+        layer = BLayers.layers[col_index]
 
-        BLayers.layers.remove(index)
-        BLayers.active_index = index-1
+
+        if layer.type == 'GROUR' or not [o for o in scene.objects if o.layers[layer.index]] :
+            BLayers.layers.remove(col_index)
+            BLayers.active_index = col_index-1
+
+        else :
+            self.report({'ERROR'},'You only can delete empty layer')
+
+
+        return {'FINISHED'}
+
+
+class AddGroup(bpy.types.Operator):
+    """Remove Parent"""
+    bl_idname = "blayers.add_group"
+    bl_label = "Add Gpencil Layer"
+
+    def execute(self, context):
+        scene = context.scene
+        BLayers = scene.BLayers
+        active_index = BLayers.active_index
+
+        group = BLayers.layers.add()
+        group.name = 'New Group'
+        group.type = 'GROUP'
+        scene.BLayers.id_count +=1
+        group.id = BLayers.id_count
+        print(group.id)
+        BLayers.active_index = len(BLayers.layers)-1
+        context.area.tag_redraw()
+
+        return {'FINISHED'}
+
+class MoveInGroup(bpy.types.Operator):
+    """Remove Parent"""
+    bl_idname = "blayers.move_in_group"
+    bl_label = "Add Gpencil Layer"
+
+    index = bpy.props.IntProperty()
+
+    def execute(self, context):
+        scene = context.scene
+        BLayers = scene.BLayers
+        col_index = BLayers.active_index
+        layer = BLayers.layers[col_index]
+
+        group = BLayers.layers[self.index]
+        offset = 1 if col_index > self.index else 0
+        layer.id = group.id
+        BLayers.layers.move(col_index,self.index+offset)
+        BLayers.active_index = self.index+offset
+        context.area.tag_redraw()
 
         return {'FINISHED'}
 
@@ -172,17 +223,19 @@ class AddLayer(bpy.types.Operator):
         BLayers = scene.BLayers
         active_index = BLayers.active_index
 
-        existing_indexes = [l.index for l in BLayers.layers]
-        free_index = max(existing_indexes)+1 if existing_indexes else 0
-        for i in existing_indexes :
-            if not i+1 in existing_indexes :
-                free_index = i+1
-                break
+        existing_indexes = [l.index for l in BLayers.layers if l.type =='LAYER']
+        if len(existing_indexes) <= 19 :
+            free_index = max(existing_indexes)+1 if existing_indexes else 0
+            for i in existing_indexes :
+                if not i+1 in existing_indexes :
+                    free_index = i+1
+                    break
 
-        layer = BLayers.layers.add()
-        layer.name = 'New Layer'
-        layer.index = free_index
-        BLayers.active_index = len(BLayers.layers)-1
-        context.area.tag_redraw()
+            layer = BLayers.layers.add()
+            layer.name = 'New Layer'
+            layer.index = free_index
+            layer.type = 'LAYER'
+            BLayers.active_index = len(BLayers.layers)-1
+            context.area.tag_redraw()
 
         return {'FINISHED'}
