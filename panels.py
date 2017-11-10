@@ -15,9 +15,9 @@ class BLayersList(bpy.types.UIList):
             #op = row.prop(item,"hide", text="", emboss=False, icon=icon)
 
             if item.type == 'GROUP' :
-                hide_icon = 'VISIBLE_IPO_OFF' if item.hide else 'VISIBLE_IPO_ON'
+                visibility_icon = 'VISIBLE_IPO_ON' if item.visibility else 'VISIBLE_IPO_OFF'
                 expand_icon = 'TRIA_DOWN' if item.expand else 'TRIA_RIGHT'
-                row.prop(item,'hide',icon =hide_icon ,text='', emboss=False)
+                row.prop(item,'visibility',icon =visibility_icon ,text='', emboss=False)
                 row.prop(item,'expand',icon =expand_icon ,text='', emboss=False)
                 row.prop(item, "name", text="", emboss=False,icon= 'FILE_FOLDER' )
                 row.separator()
@@ -39,9 +39,43 @@ class BLayersList(bpy.types.UIList):
             op = row.prop(item,"lock", text="", emboss=False, icon=icon)
 
 
-
         elif self.layout_type in {'GRID'}:
             layout.alignment = 'CENTER'
+
+    def filter_items(self, context, data, propname):
+        BLayers = context.scene.BLayers
+        layers = getattr(data, propname)
+        helper_funcs = bpy.types.UI_UL_list
+
+        # Default return values.
+        flt_flags = []
+        flt_neworder = []
+
+        # Filtering by name
+        if self.filter_name:
+            flt_flags = helper_funcs.filter_items_by_name(self.filter_name, self.bitflag_filter_item, layers, "name",
+                                                          reverse=self.use_filter_name_reverse)
+        if not flt_flags:
+            flt_flags = [self.bitflag_filter_item] * len(layers)
+
+        #flt_flags = []
+        for i,layer in enumerate(layers):
+            groups = [l for l in BLayers.layers if l.type=='GROUP' and l.id == layer.id]
+            if layer.type == 'LAYER' and groups and not groups[0].expand:
+                flt_flags[i] = 0
+            #else :
+            #    flt_flags.append(self.bitflag_filter_item)
+
+
+
+        # Reorder by name or average weight.
+        if self.use_filter_sort_alpha:
+            flt_neworder = helper_funcs.sort_items_by_name(layers, "name")
+
+
+        #return flt_flags, flt_neworder
+        return flt_flags,[]
+
 
 class GPLayerPanel(bpy.types.Panel) :
     bl_space_type = 'VIEW_3D'

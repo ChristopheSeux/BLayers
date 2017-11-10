@@ -26,10 +26,9 @@ def hide_layers(self,context) :
     item = BLayers.layers[layers.index(self)]
 
     layer_to_hide = [l for l in BLayers.layers if l.type=='LAYER' and l.id == self.id]
-    print(layer_to_hide)
 
     for l in layer_to_hide :
-        context.scene.layers[l.index] = not self.hide
+        context.scene.layers[l.index] = self.visibility
             #l.lock = self.lock
 
 
@@ -39,7 +38,7 @@ class LayersSettings(bpy.types.PropertyGroup):
     move = bpy.props.BoolProperty()
     index = bpy.props.IntProperty(default = -1)
     type = bpy.props.StringProperty(default = 'LAYER')
-    hide = bpy.props.BoolProperty(default = False,update=hide_layers)
+    visibility = bpy.props.BoolProperty(default = True,update=hide_layers)
     expand = bpy.props.BoolProperty(default = True)
     id = bpy.props.IntProperty(default = -1)
 

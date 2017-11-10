@@ -91,25 +91,27 @@ def register():
         layout = self.layout
         #main_col = layout.column(align = True)
         scene = context.scene
+        BLayers = scene.BLayers
         rd = scene.render
         rl = rd.layers.active
 
-        if context.scene.BLayers.layers :
+        if BLayers.layers :
+            layers = [l for l in BLayers.layers if l.type == 'LAYER']
             row = layout.row()
 
             col = row.column(align = True)
             col.label('Layer : ')
-            for layer in context.scene.BLayers.layers :
+            for layer in layers :
                 col.prop(context.scene.render.layers.active,'layers',index = layer.index,toggle = True,text = layer.name)
 
             col = row.column(align = True)
             col.label('Mask Layer: ')
-            for layer in context.scene.BLayers.layers :
+            for layer in layers :
                 col.prop(context.scene.render.layers.active,'layers_zmask',index = layer.index,toggle = True,text = layer.name)
 
             col = row.column(align = True)
             col.label('Exclude : ')
-            for layer in context.scene.BLayers.layers :
+            for layer in layers :
                 col.prop(context.scene.render.layers.active,'layers_exclude',index = layer.index,toggle = True,text = layer.name)
 
             #split = layout.split()

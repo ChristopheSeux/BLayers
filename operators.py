@@ -1,5 +1,7 @@
 import bpy
 
+from .functions import *
+
 
 class ObjectsToLayer(bpy.types.Operator):
     """Remove Parent"""
@@ -47,7 +49,7 @@ class ObjectsToLayer(bpy.types.Operator):
                 if l and i not in self.src_layers :
                     self.src_layers.append(i)
 
-        print(self.src_layers)
+        #print(self.src_layers)
         if index in range(len(BLayers.layers)):
             BLayers.layers[index].move = True
             for l in BLayers.layers :
@@ -120,29 +122,81 @@ class MoveLayer(bpy.types.Operator):
     def execute(self, context):
         scene = context.scene
         BLayers = scene.BLayers
-        index = BLayers.active_index
-        dst = self.step + index
+        col_index = BLayers.active_index
+        active_layer = BLayers.layers[col_index]
+
+        #index_in_group = [i for i,l in enumerate(BLayers.layers) if l.type=='LAYER' and l.id == active_layer.id]
+
+        dst = self.step + col_index
         if dst >= len(BLayers.layers) :
             dst = 0
         elif dst < 0:
             dst = len(BLayers.layers)-1
 
-        print(dst)
+        same_group = same_prop(BLayers.layers,col_index,'id')
 
-        BLayers.layers.move(index,dst)
-        BLayers.active_index = dst
+        if self.step > 0 : #DOWN
+            new_index = move_layer_down(BLayers.layers,col_index)
+            if active_layer.type == 'LAYER' or (active_layer.type == 'GROUP' and len(same_group)==1):
+                BLayers.layers.move(col_index,new_index)
+
+            else :
+                #new_index = move_group_down(BLayers.layers,col_index)
+                print('new_index',new_index)
+                j=0
+                for i in reversed(same_group) :
+                    BLayers.layers.move(i,new_index+j)
+                    j-=1
+
+                new_index = new_index+j+1
+        elif self.step < 0 : #UP
+            new_index = move_layer_up(BLayers.layers,col_index)
+            if active_layer.type == 'LAYER' or (active_layer.type == 'GROUP' and len(same_group)==1):
+                BLayers.layers.move(col_index,new_index)
+
+            else  :
+                for i in range(len(same_group)) :
+                    BLayers.layers.move(max(same_group),new_index)
+
+                    #new_index = move_layer_up(collection,i)
+                #new_index = move_group_up(BLayers.layers,col_index)
+
+        BLayers.active_index = new_index
         '''
-        sc_object = [o for o in scene.objects if o.layers[index]]
-        dest_objects = [o for o in scene.objects if o.layers[dst]]
+        if active_layer.type == 'LAYER' :
+            if col_index == max(index_in_group) and self.step > 0 or col_index == min(index_in_group) and self.step < 0:
+                active_layer.id = -1
 
-        for ob in sc_object:
-            ob.layers[dst] = True
-            ob.layers[index] = False
+            if self.step > 0 and col_index < len(BLayers.layers)-1 and BLayers.layers[col_index+1].id != -1:
+                index_in_group = [i for i,l in enumerate(BLayers.layers) if  l.id == BLayers.layers[col_index+1].id]
+                dst = max(index_in_group)
+            elif self.step < 0 and BLayers.layers[col_index-1].id != -1 :
+                index_in_group = [i for i,l in enumerate(BLayers.layers) if  l.id == BLayers.layers[col_index-1].id]
+                dst = min(index_in_group)
 
-        for ob in dest_objects:
-            ob.layers[index] = True
-            ob.layers[dst] = False
-            '''
+            BLayers.layers.move(col_index,dst)
+            BLayers.active_index = dst
+
+        elif active_layer.type == 'GROUP' :
+            if self.step > 0 : ## DOWN
+                if BLayers.layers[col_index-1].id != -1 :
+                    src = max(index_in_group)
+                    dst = col_index
+                    iteration = 1
+                else :
+
+            if self.step < 0 :  ## UP
+                if BLayers.layers[col_index+1].id != -1 :
+                    src = col_index-1
+                    dst = max(index_in_group)
+                    iteration = 1
+                else :
+                    move =
+
+            for i in range(iteration) :
+                BLayers.layers.move(col_index-1,max(index_in_group))
+                BLayers.active_index = col_index-1
+                '''
 
         return {'FINISHED'}
 
@@ -158,8 +212,10 @@ class RemoveLayer(bpy.types.Operator):
         col_index = BLayers.active_index
         layer = BLayers.layers[col_index]
 
-
-        if layer.type == 'GROUR' or not [o for o in scene.objects if o.layers[layer.index]] :
+        if layer.type == 'GROUP' or not [o for o in scene.objects if o.layers[layer.index]] :
+            if layer.type == 'GROUP' :
+                for l in [l for l in BLayers.layers if l.id == layer.id] :
+                    l.id = -1
             BLayers.layers.remove(col_index)
             BLayers.active_index = col_index-1
 
@@ -181,11 +237,19 @@ class AddGroup(bpy.types.Operator):
         active_index = BLayers.active_index
 
         group = BLayers.layers.add()
-        group.name = 'New Group'
+
+        existing_number = [int(l.name[-2:]) for l in BLayers.layers if l.name.startswith('GROUP_') and l.name[-2:].isnumeric()]
+        free_number = max(existing_number)+1 if existing_number else 1
+        for i in existing_number :
+            if not i+1 in existing_number :
+                free_number = i+1
+                break
+
+        group.name = 'GROUP_%02d'%free_number
         group.type = 'GROUP'
         scene.BLayers.id_count +=1
         group.id = BLayers.id_count
-        print(group.id)
+        #print(group.id)
         BLayers.active_index = len(BLayers.layers)-1
         context.area.tag_redraw()
 
@@ -204,12 +268,14 @@ class MoveInGroup(bpy.types.Operator):
         col_index = BLayers.active_index
         layer = BLayers.layers[col_index]
 
-        group = BLayers.layers[self.index]
-        offset = 1 if col_index > self.index else 0
-        layer.id = group.id
-        BLayers.layers.move(col_index,self.index+offset)
-        BLayers.active_index = self.index+offset
-        context.area.tag_redraw()
+        if layer.type =='LAYER' :
+
+            group = BLayers.layers[self.index]
+            offset = 1 if col_index > self.index else 0
+            layer.id = group.id
+            BLayers.layers.move(col_index,self.index+offset)
+            BLayers.active_index = self.index+offset
+            context.area.tag_redraw()
 
         return {'FINISHED'}
 
@@ -232,7 +298,15 @@ class AddLayer(bpy.types.Operator):
                     break
 
             layer = BLayers.layers.add()
-            layer.name = 'New Layer'
+            existing_number = [int(l.name[-2:]) for l in BLayers.layers if l.name.startswith('Layer_') and l.name[-2:].isnumeric()]
+            free_number = max(existing_number)+1 if existing_number else 1
+            for i in existing_number :
+                if not i+1 in existing_number :
+                    free_number = i+1
+                    break
+
+
+            layer.name = 'Layer_%02d'%free_number
             layer.index = free_index
             layer.type = 'LAYER'
             BLayers.active_index = len(BLayers.layers)-1
