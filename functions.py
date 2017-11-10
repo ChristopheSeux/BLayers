@@ -27,10 +27,13 @@ def move_layer_down(collection,index):
         print('same group',same_group)
         if layer.type == 'LAYER' and layer.id ==-1  :
             print(1)
+            '''
             if i == index +1 :
                 new_index = i
             else :
                 new_index = i-1
+                '''
+            new_index = i
             break
 
         elif layer.type == 'GROUP' and len(same_group)==1 :
@@ -38,12 +41,12 @@ def move_layer_down(collection,index):
             new_index = i
             break
 
-        elif layer.type == 'GROUP' and collection[i-1].type =='LAYER' and collection[i-1].id !=-1 :
-                print(3)
-                new_index = i
-                break
+        elif layer.type == 'GROUP' and collection[i-1].type =='LAYER' and collection[i-1].id !=-1 and collection[index].id!=collection[i].id:
+            print(3)
+            new_index = i
+            break
 
-        elif layer.type == 'LAYER' and layer.id !=-1 and layer.id == max(same_group):
+        elif layer.type == 'LAYER' and layer.id !=-1 and layer.id == max(same_group) and collection[index].id!=collection[i].id :
             print(4)
             new_index = i
             break
