@@ -14,6 +14,7 @@ if "bpy" in locals():
 from .properties import *
 from .operators import *
 from .panels import *
+from .utils import get_icons
 
 import os
 import bpy
@@ -69,6 +70,8 @@ def unregister():
 
 
 def register():
+    get_icons()
+
     register.Panels = []
     bpy.app.handlers.load_post.append(change_key_map)
     bpy.utils.register_module(__name__)
@@ -107,6 +110,7 @@ def register():
                     '''
 
 def unregister():
+    bpy.utils.previews.remove(get_icons.custom_icons)
     register.layer_panel.draw = register.rl_draw
 
     wm = bpy.context.window_manager

@@ -1,5 +1,5 @@
 import bpy
-
+from .utils import get_icons
 
 def render_layer_draw(self, context):
     layout = self.layout
@@ -66,12 +66,12 @@ class BLayersList(bpy.types.UIList):
 
             if item.type == 'GROUP' :
                 visibility_icon = 'VISIBLE_IPO_ON' if item.visibility else 'VISIBLE_IPO_OFF'
-                expand_icon = 'TRIA_DOWN' if item.expand else 'TRIA_RIGHT'
+                expand_icon = get_icons.custom_icons["GROUP_OPEN"].icon_id if item.expand else get_icons.custom_icons["GROUP_CLOSED"].icon_id
                 row.prop(item,'visibility',icon =visibility_icon ,text='', emboss=False)
-                row.prop(item,'expand',icon =expand_icon ,text='', emboss=False)
-                row.prop(item, "name", text="", emboss=False,icon= 'FILE_FOLDER' )
+                row.prop(item,'expand',icon_value =expand_icon ,text='', emboss=False)
+                row.prop(item, "name", text="", emboss=False )
                 row.separator()
-                row.operator("blayers.move_in_group",icon = 'SCREEN_BACK',text='',emboss= False).index = index
+                row.operator("blayers.move_in_group",icon_value =get_icons.custom_icons["IN_GROUP"].icon_id ,text='',emboss= False).index = index
 
             else :
                 row.prop(context.scene,"layers",index = item.index, text="", emboss=False, icon=icon)
