@@ -18,7 +18,7 @@ class ObjectsToLayer(bpy.types.Operator):
         layout = self.layout
 
         col = layout.column(align=True)
-        for l in BLayers.layers :
+        for l in [l for l in BLayers.layers if l.type == 'LAYER'] :
             col.prop(l,'move',toggle = True,text = l.name)
 
 
@@ -126,23 +126,30 @@ class MoveLayer(bpy.types.Operator):
         active_layer = BLayers.layers[col_index]
 
         #index_in_group = [i for i,l in enumerate(BLayers.layers) if l.type=='LAYER' and l.id == active_layer.id]
-
+        '''
         dst = self.step + col_index
         if dst >= len(BLayers.layers) :
             dst = 0
         elif dst < 0:
             dst = len(BLayers.layers)-1
-
+            '''
         same_group = same_prop(BLayers.layers,col_index,'id')
+
+        if active_layer.type == 'LAYER' :
+            if col_index == max(same_group) and self.step > 0 or col_index == min(same_group)+1 and self.step < 0:
+                active_layer.id = -1
+
+
 
         if self.step > 0 : #DOWN
             new_index = move_layer_down(BLayers.layers,col_index)
+            print('new_index',new_index)
             if active_layer.type == 'LAYER' or (active_layer.type == 'GROUP' and len(same_group)==1):
                 BLayers.layers.move(col_index,new_index)
 
             else :
                 #new_index = move_group_down(BLayers.layers,col_index)
-                print('new_index',new_index)
+
                 j=0
                 for i in reversed(same_group) :
                     BLayers.layers.move(i,new_index+j)
@@ -161,12 +168,12 @@ class MoveLayer(bpy.types.Operator):
                     #new_index = move_layer_up(collection,i)
                 #new_index = move_group_up(BLayers.layers,col_index)
 
+
+
+
+
         BLayers.active_index = new_index
         '''
-        if active_layer.type == 'LAYER' :
-            if col_index == max(index_in_group) and self.step > 0 or col_index == min(index_in_group) and self.step < 0:
-                active_layer.id = -1
-
             if self.step > 0 and col_index < len(BLayers.layers)-1 and BLayers.layers[col_index+1].id != -1:
                 index_in_group = [i for i,l in enumerate(BLayers.layers) if  l.id == BLayers.layers[col_index+1].id]
                 dst = max(index_in_group)
@@ -197,7 +204,7 @@ class MoveLayer(bpy.types.Operator):
                 BLayers.layers.move(col_index-1,max(index_in_group))
                 BLayers.active_index = col_index-1
                 '''
-
+        redraw_areas()
         return {'FINISHED'}
 
 
@@ -222,7 +229,7 @@ class RemoveLayer(bpy.types.Operator):
         else :
             self.report({'ERROR'},'You only can delete empty layer')
 
-
+        redraw_areas()
         return {'FINISHED'}
 
 
@@ -251,7 +258,7 @@ class AddGroup(bpy.types.Operator):
         group.id = BLayers.id_count
         #print(group.id)
         BLayers.active_index = len(BLayers.layers)-1
-        context.area.tag_redraw()
+        redraw_areas()
 
         return {'FINISHED'}
 
@@ -275,7 +282,7 @@ class MoveInGroup(bpy.types.Operator):
             layer.id = group.id
             BLayers.layers.move(col_index,self.index+offset)
             BLayers.active_index = self.index+offset
-            context.area.tag_redraw()
+        redraw_areas()
 
         return {'FINISHED'}
 
@@ -310,6 +317,6 @@ class AddLayer(bpy.types.Operator):
             layer.index = free_index
             layer.type = 'LAYER'
             BLayers.active_index = len(BLayers.layers)-1
-            context.area.tag_redraw()
+        redraw_areas()
 
         return {'FINISHED'}
