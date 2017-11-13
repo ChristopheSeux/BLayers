@@ -3,14 +3,8 @@ import bpy
 def same_prop(collection,index,prop) :
     return [i for i,l in enumerate(collection) if getattr(l,prop) == getattr(collection[index],prop)]
 
-def redraw_areas():
-    for area in bpy.context.screen.areas :
-        area.tag_redraw()
-
-
 
 def move_layer_up(collection,index) :
-
     above_layer = reversed([i for i,l in enumerate(collection) if i< index])
 
     new_index =  0
@@ -20,22 +14,18 @@ def move_layer_up(collection,index) :
             new_index = i
             break
 
+    #collection.move(index,new_index)
     return new_index
 
 def move_layer_down(collection,index):
-    #print('active_index',collection[i].id)
-    if collection[index].type == 'LAYER':
-        below_layer = [i for i,l in enumerate(collection) if i> index]
-    elif collection[index].type == 'GROUP':
-        below_layer = [i for i,l in enumerate(collection) if i> index if l.id !=collection[index].id]
+    below_layer = [i for i,l in enumerate(collection) if i> index]
 
     new_index =  len(collection)-1
     for i in below_layer :
         layer = collection[i]
         same_group= same_prop(collection,i,'id')
-
+        print('same group',same_group)
         if layer.type == 'LAYER' and layer.id ==-1  :
-<<<<<<< HEAD
             print(1)
             '''
             if i == index +1 :
@@ -43,16 +33,14 @@ def move_layer_down(collection,index):
             else :
                 new_index = i-1
                 '''
-=======
->>>>>>> 4bcd4af6f75ce4c0307c58c48d1d40a33cd2278b
             new_index = i
             break
 
         elif layer.type == 'GROUP' and len(same_group)==1 :
+            print(2)
             new_index = i
             break
 
-<<<<<<< HEAD
         elif layer.type == 'GROUP' and collection[i-1].type =='LAYER' and collection[i-1].id !=-1 and collection[index].id!=collection[i].id:
             print(3)
             new_index = i
@@ -65,11 +53,23 @@ def move_layer_down(collection,index):
         '''
             if i+i
         and collection[i+1].id == -1 or layer.type == 'GROUP' and collection[i+1].type == 'GROUP':
-=======
-
-        elif layer.type == 'LAYER' and layer.id !=-1 and i == max(same_group):
->>>>>>> 4bcd4af6f75ce4c0307c58c48d1d40a33cd2278b
             new_index = i
             break
+        '''
 
+
+
+
+    #collection.move(index,new_index)
+    return new_index
+
+def move_group_up(collection,index) :
+    for i in [i for i,l in enumerate(collection) if l.id == collection[index].id]:
+        new_index = move_layer_up(collection,i)
+
+    return new_index
+
+def move_group_down(collection,index) :
+    for i in [i for i,l in enumerate(collection) if l.id == collection[index].id]:
+        new_index = move_layer_down(collection,i)
     return new_index

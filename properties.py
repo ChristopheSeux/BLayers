@@ -1,25 +1,21 @@
 import bpy
-import copy
 
 def lock_layers(self,context):
     BLayers = context.scene.BLayers
     layers = BLayers.layers.values()
     item = BLayers.layers[layers.index(self)]
 
-    lock = self.lock
-    id = self.id
-
-    if item.type == 'LAYER' :
-        layer_to_lock = [self]
+    if self.type == 'LAYER' :
+        layer_to_lock = [item]
     else :
-        layer_to_lock = [l for l in BLayers.layers if l.type=='LAYER' and l.id == id]
+        layer_to_lock = [l for l in BLayers.layers if l.type=='LAYER' and l.id == self.id]
 
 
     for l in layer_to_lock :
-        l.lock = lock
+        l.lock = self.lock
         for ob in [o for o in context.scene.objects if o.layers[l.index]] :
-            ob.hide_select = lock
-            if lock:
+            ob.hide_select = self.lock
+            if self.lock:
                 ob.select = False
 
     #if

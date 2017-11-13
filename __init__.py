@@ -15,7 +15,6 @@ from .properties import *
 from .operators import *
 from .panels import *
 
-import os
 import bpy
 from bpy.app.handlers import persistent
 
@@ -60,13 +59,6 @@ def change_key_map(dummy):
                 l.index = l_index
                 l.name = 'Layer_%02d'%(l_index+1)
 
-custom_icons = None
-
-def unregister():
-
-    bpy.utils.unregister_module(__name__)
-
-
 
 def register():
     register.Panels = []
@@ -90,12 +82,61 @@ def register():
         km.keymap_items.new("blayers.objects_to_layer", type = "M", value = "PRESS")
         register.addon_keymaps.append(km)
 
-    #unregister render layer panel
+
     panels =[a for a in bpy.types.Panel.__subclasses__() if a.__name__ == 'CyclesRender_PT_layer_options']
     register.layer_panel = panels[0]
     register.rl_draw = panels[0].draw
 
-    register.layer_panel.draw = render_layer_draw
+    def draw(self, context):
+        layout = self.layout
+        #main_col = layout.column(align = True)
+        scene = context.scene
+        BLayers = scene.BLayers
+        rd = scene.render
+        rl = rd.layers.active
+
+        if BLayers.layers :
+            layers = [l for l in BLayers.layers if l.type == 'LAYER']
+            row = layout.row()
+
+            col = row.column(align = True)
+            col.label('Layer : ')
+            for layer in layers :
+                col.prop(context.scene.render.layers.active,'layers',index = layer.index,toggle = True,text = layer.name)
+
+            col = row.column(align = True)
+            col.label('Mask Layer: ')
+            for layer in layers :
+                col.prop(context.scene.render.layers.active,'layers_zmask',index = layer.index,toggle = True,text = layer.name)
+
+            col = row.column(align = True)
+            col.label('Exclude : ')
+            for layer in layers :
+                col.prop(context.scene.render.layers.active,'layers_exclude',index = layer.index,toggle = True,text = layer.name)
+
+            #split = layout.split()
+            layout.separator()
+        #col = split.column()
+        #col.prop(scene, "layers", text="Scene")
+        #col.prop(rl, "layers_exclude", text="Exclude")
+
+        #col = split.column()
+
+        split = layout.split()
+
+        col = split.column()
+        col.label(text="Material:")
+        col.prop(rl, "material_override", text="")
+        col.separator()
+        col.prop(rl, "samples")
+
+        col = split.column()
+        col.prop(rl, "use_sky", "Use Environment")
+        col.prop(rl, "use_ao", "Use AO")
+        col.prop(rl, "use_solid", "Use Surfaces")
+        col.prop(rl, "use_strand", "Use Hair")
+
+    register.layer_panel.draw = draw
 
     '''
     for pt in bpy.types.Panel.__subclasses__():
