@@ -76,8 +76,8 @@ class BLayersList(bpy.types.UIList):
             else :
                 row.prop(context.scene,"layers",index = item.index, text="", emboss=False, icon=icon)
                 if item.id in [l.id for l in context.scene.BLayers.layers if l.type == 'GROUP'] :
-                    row.separator()
-                    row.separator()
+                    row.label(icon_value=get_icons.custom_icons["GROUP_TREE"].icon_id)
+                    #row.separator()
 
                 row.prop(item, "name", text="", emboss=False)
                 if context.object and context.object.layers[item.index] :
@@ -132,13 +132,15 @@ class GPLayerPanel(bpy.types.Panel) :
     bl_region_type = 'TOOLS'
     bl_label = "Layer Management"
     bl_category = "Layers"
-    bl_context = "objectmode"
 
+
+    '''
     @classmethod
     def poll(self, context):
         EDIT_MODES = {'EDIT_MESH', 'EDIT_CURVE', 'EDIT_SURFACE', 'EDIT_METABALL', 'EDIT_TEXT', 'EDIT_ARMATURE'}
         return ((getattr(context, "mode", 'EDIT_MESH') not in EDIT_MODES) and
                 (context.area.spaces.active.type == 'VIEW_3D'))
+    '''
 
     @staticmethod
     def draw(self, context):
