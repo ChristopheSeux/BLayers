@@ -61,10 +61,35 @@ class ObjectsToLayer(bpy.types.Operator):
         return wm.invoke_props_dialog(self,width=175)
 
 
-class ToggleLayerLock(bpy.types.Operator):
+class SelectObjects(bpy.types.Operator):
     """Isolate layer lock"""
-    bl_idname = "blayers.toogle_layer_lock"
-    bl_label = "Toggle Layer Lock"
+    bl_idname = "blayers.select_objects"
+    bl_label = "Select all objects on active layer"
+
+    def execute(self, context):
+        scene = context.scene
+        BLayers = scene.BLayers
+        active_layer = BLayers.layers[BLayers.active_index]
+        active_index = active_layer.index
+
+        if active_layer.type == 'LAYER' :
+            layers = [active_index]
+        else :
+            layers = [l.index for l in BLayers.layers if l.id == active_layer.id]
+
+        for ob in context.scene.objects :
+            for index in layers :
+                if ob.layers[index] :
+                    ob.select = True
+
+        return {'FINISHED'}
+
+class ToggleLayer(bpy.types.Operator):
+    """Isolate layer lock"""
+    bl_idname = "blayers.toogle_layer"
+    bl_label = "Toggle Layer Render"
+
+    prop = bpy.props.StringProperty()
 
     def execute(self, context):
         scene = context.scene
@@ -72,20 +97,28 @@ class ToggleLayerLock(bpy.types.Operator):
         active_layer = BLayers.layers[BLayers.active_index]
         passive_layers = [l for l in BLayers.layers if l !=active_layer]
 
-        locked_layers = [l.index for l in BLayers.layers if l !=active_layer and l.lock]
+        prop = self.prop
 
-        toogle = False if len(locked_layers)==len(passive_layers) else True
+        if active_layer.type == 'GROUP' :
+            passive_layers = [l for l in BLayers.layers if l.type =='LAYER' and l !=active_layer and l.id != active_layer.id]
+        else :
+            passive_layers = [l for l in BLayers.layers if l.type =='LAYER' and l !=active_layer]
 
-        active_layer.lock = False
+        true_layers = [l for l in BLayers.layers if l !=active_layer and l.type =='LAYER' and getattr(l,prop)]
+        toogle = False if len(true_layers)==len(passive_layers) else True
 
-        for ob in scene.objects :
-            if ob.layers[active_layer.index] :
-                ob.hide_select = False
-            else :
-                ob.hide_select = toogle
+        groups = [g for g in BLayers.layers if g.type =='GROUP' and g.id != active_layer.id]
+        #scene.layers[active_index] = True
+
+        setattr(active_layer,prop,False)
+
+        for g in groups :
+            setattr(g,prop,toogle)
 
         for l in passive_layers:
-            l.lock = toogle
+            if l.type == 'LAYER' :
+                setattr(l,prop,toogle)
+
 
         return {'FINISHED'}
 
@@ -98,16 +131,26 @@ class ToogleLayerHide(bpy.types.Operator):
     def execute(self, context):
         scene = context.scene
         BLayers = scene.BLayers
-        active_index = BLayers.layers[BLayers.active_index].index
+        active_layer = BLayers.layers[BLayers.active_index]
+        active_index = active_layer.index
 
-        layers_index = [l.index for l in BLayers.layers if l.index !=active_index]
+        if active_layer.type == 'GROUP' :
+            layers_index = [l.index for l in BLayers.layers if l.type =='LAYER' and l.index !=active_index and l.id != active_layer.id]
+        else :
+            layers_index = [l.index for l in BLayers.layers if l.type =='LAYER' and l.index !=active_index]
+
         hide_layers = [i for i in layers_index if not scene.layers[i]]
 
         toogle = True if len(hide_layers)==len(layers_index) else False
 
+        groups = [g for g in BLayers.layers if g.type =='GROUP' and g.id != active_layer.id]
         scene.layers[active_index] = True
+
         for index in layers_index:
             scene.layers[index] = toogle
+
+        for g in groups :
+            g.visibility = toogle
 
         return {'FINISHED'}
 
@@ -125,20 +168,11 @@ class MoveLayer(bpy.types.Operator):
         col_index = BLayers.active_index
         active_layer = BLayers.layers[col_index]
 
-        #index_in_group = [i for i,l in enumerate(BLayers.layers) if l.type=='LAYER' and l.id == active_layer.id]
-        '''
-        dst = self.step + col_index
-        if dst >= len(BLayers.layers) :
-            dst = 0
-        elif dst < 0:
-            dst = len(BLayers.layers)-1
-            '''
         same_group = same_prop(BLayers.layers,col_index,'id')
 
         if active_layer.type == 'LAYER' :
             if col_index == max(same_group) and self.step > 0 or col_index == min(same_group)+1 and self.step < 0:
                 active_layer.id = -1
-
 
 
         if self.step > 0 : #DOWN
@@ -147,9 +181,7 @@ class MoveLayer(bpy.types.Operator):
             if active_layer.type == 'LAYER' or (active_layer.type == 'GROUP' and len(same_group)==1):
                 BLayers.layers.move(col_index,new_index)
 
-            else :
-                #new_index = move_group_down(BLayers.layers,col_index)
-
+            else : # it's a group with layers
                 j=0
                 for i in reversed(same_group) :
                     BLayers.layers.move(i,new_index+j)
@@ -168,42 +200,8 @@ class MoveLayer(bpy.types.Operator):
                     #new_index = move_layer_up(collection,i)
                 #new_index = move_group_up(BLayers.layers,col_index)
 
-
-
-
-
         BLayers.active_index = new_index
-        '''
-            if self.step > 0 and col_index < len(BLayers.layers)-1 and BLayers.layers[col_index+1].id != -1:
-                index_in_group = [i for i,l in enumerate(BLayers.layers) if  l.id == BLayers.layers[col_index+1].id]
-                dst = max(index_in_group)
-            elif self.step < 0 and BLayers.layers[col_index-1].id != -1 :
-                index_in_group = [i for i,l in enumerate(BLayers.layers) if  l.id == BLayers.layers[col_index-1].id]
-                dst = min(index_in_group)
 
-            BLayers.layers.move(col_index,dst)
-            BLayers.active_index = dst
-
-        elif active_layer.type == 'GROUP' :
-            if self.step > 0 : ## DOWN
-                if BLayers.layers[col_index-1].id != -1 :
-                    src = max(index_in_group)
-                    dst = col_index
-                    iteration = 1
-                else :
-
-            if self.step < 0 :  ## UP
-                if BLayers.layers[col_index+1].id != -1 :
-                    src = col_index-1
-                    dst = max(index_in_group)
-                    iteration = 1
-                else :
-                    move =
-
-            for i in range(iteration) :
-                BLayers.layers.move(col_index-1,max(index_in_group))
-                BLayers.active_index = col_index-1
-                '''
         redraw_areas()
         return {'FINISHED'}
 

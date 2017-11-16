@@ -1,5 +1,5 @@
 import bpy
-from .utils import get_icons
+from . import utils
 
 def render_layer_draw(self, context):
     layout = self.layout
@@ -60,23 +60,30 @@ class BLayersList(bpy.types.UIList):
 
         if self.layout_type in {'DEFAULT', 'COMPACT'}:
             row = layout.row(align=True)
+            if item.lock :
+                row.active = False
+            else :
+                row.active = True
+
             # view operators
             icon = 'RESTRICT_VIEW_OFF' if context.scene.layers[item.index] else 'RESTRICT_VIEW_ON'
             #op = row.prop(item,"hide", text="", emboss=False, icon=icon)
 
             if item.type == 'GROUP' :
                 visibility_icon = 'VISIBLE_IPO_ON' if item.visibility else 'VISIBLE_IPO_OFF'
-                expand_icon = get_icons.custom_icons["GROUP_OPEN"].icon_id if item.expand else get_icons.custom_icons["GROUP_CLOSED"].icon_id
+                expand_icon = utils.custom_icons["GROUP_OPEN"].icon_id if item.expand else utils.custom_icons["GROUP_CLOSED"].icon_id
                 row.prop(item,'visibility',icon =visibility_icon ,text='', emboss=False)
+
                 row.prop(item,'expand',icon_value =expand_icon ,text='', emboss=False)
                 row.prop(item, "name", text="", emboss=False )
                 row.separator()
-                row.operator("blayers.move_in_group",icon_value =get_icons.custom_icons["IN_GROUP"].icon_id ,text='',emboss= False).index = index
+                row.operator("blayers.move_in_group",icon_value =utils.custom_icons["IN_GROUP"].icon_id ,text='',emboss= False).index = index
 
             else :
                 row.prop(context.scene,"layers",index = item.index, text="", emboss=False, icon=icon)
+                #row.prop(item,'visibility',icon ='RENDER_STILL' ,text='', emboss=False)
                 if item.id in [l.id for l in context.scene.BLayers.layers if l.type == 'GROUP'] :
-                    row.label(icon_value=get_icons.custom_icons["GROUP_TREE"].icon_id)
+                    row.label(icon_value=utils.custom_icons["GROUP_TREE"].icon_id)
                     #row.separator()
 
                 row.prop(item, "name", text="", emboss=False)
@@ -85,8 +92,12 @@ class BLayersList(bpy.types.UIList):
 
                 elif [o for o in context.scene.objects if o.layers[item.index]]:
                     row.label(icon='LAYER_USED')
-            icon = 'LOCKED' if item.lock else 'UNLOCKED'
+
+            icon = "LOCKED" if item.lock else "UNLOCKED"
             op = row.prop(item,"lock", text="", emboss=False, icon=icon)
+            render_icon =  'RESTRICT_RENDER_ON' if item.hide_render else  'RESTRICT_RENDER_OFF'
+            row.prop(item,'hide_render',icon =render_icon ,text='', emboss=False)
+
 
 
         elif self.layout_type in {'GRID'}:
@@ -133,20 +144,11 @@ class GPLayerPanel(bpy.types.Panel) :
     bl_label = "Layer Management"
     bl_category = "Layers"
 
-
-    '''
-    @classmethod
-    def poll(self, context):
-        EDIT_MODES = {'EDIT_MESH', 'EDIT_CURVE', 'EDIT_SURFACE', 'EDIT_METABALL', 'EDIT_TEXT', 'EDIT_ARMATURE'}
-        return ((getattr(context, "mode", 'EDIT_MESH') not in EDIT_MODES) and
-                (context.area.spaces.active.type == 'VIEW_3D'))
-    '''
-
     @staticmethod
     def draw(self, context):
         layout = self.layout
         BLayers = context.scene.BLayers
-        col = layout.column()
+        #col = layout.column()
 
         ob = context.object
 
@@ -159,30 +161,39 @@ class GPLayerPanel(bpy.types.Panel) :
 
     def draw_layers(self, context, layout):
         BLayers = context.scene.BLayers
-        row = layout.row()
+        #row = layout.row()
 
-        col = row.column(align = True)
+        main_row = layout.row()
+        #box_row = box.row(align = True)
+        left_col = main_row.column()
+        right_col = main_row.column(align= True)
 
-        col.template_list("BLayersList", "", BLayers, "layers", BLayers, "active_index", rows=6)
+        #col = row.column(align = False)
 
-        rightCol = row.column()
+        left_col.template_list("BLayersList", "", BLayers, "layers", BLayers, "active_index", rows=6)
 
-        sub = rightCol.column(align=True)
-        add = sub.operator("blayers.add_layer", icon='ZOOMIN', text="")
-        remove = sub.operator("blayers.remove_layer", icon='ZOOMOUT', text="")
+        add_remove_row=  left_col.row(align=True)
+        add_remove_row.label('')
+        bin_icon = utils.custom_icons["BIN"].icon_id
+        add_remove_row.operator("blayers.remove_layer", icon_value =bin_icon, text="")
+        add_remove_row.separator()
+        add_remove_row.operator("blayers.add_group", icon='NEWFOLDER', text="")
+        bin_icon = utils.custom_icons["NEW_LAYER_OBJECT"].icon_id
+        add_remove_row.operator("blayers.add_layer", icon_value=bin_icon, text="")
+        add_remove_row.operator("blayers.add_layer", icon='NEW', text="")
 
-        #if len(BLayers.layers) > 1:
-        rightCol.separator()
+        #sub = row.column(align=True)
+        right_col.separator()
+        right_col.separator()
+        right_col.operator("blayers.layer_move", icon='TRIA_UP', text="").step = -1
+        right_col.operator("blayers.layer_move", icon='TRIA_DOWN', text="").step = 1
 
-        sub = rightCol.column(align=True)
-        sub.operator("blayers.layer_move", icon='TRIA_UP', text="").step = -1
-        sub.operator("blayers.layer_move", icon='TRIA_DOWN', text="").step = 1
+        right_col.separator()
 
-        rightCol.separator()
 
-        sub = rightCol.column(align=True)
-        #add = sub.operator("blayers.add_remove_layer", icon='FILE_FOLDER', text="")
-        #add.operation,add.layer,add.type = "ADD", repr(gpl),'GROUP'
-        sub.operator("blayers.add_group", icon='FILE_FOLDER', text="")
-        sub.operator("blayers.toogle_layer_lock", icon='LOCKED', text="")
-        sub.operator("blayers.toogle_layer_hide", icon='RESTRICT_VIEW_OFF', text="")
+
+        right_col.operator("blayers.toogle_layer", icon='LOCKED', text="").prop = 'lock'
+        right_col.operator("blayers.toogle_layer_hide", icon='RESTRICT_VIEW_OFF', text="")
+        right_col.operator("blayers.toogle_layer", icon='RESTRICT_RENDER_OFF', text="").prop = 'hide_render'
+        right_col.separator()
+        right_col.operator("blayers.select_objects", icon='RESTRICT_SELECT_OFF', text="")

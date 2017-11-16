@@ -7,7 +7,19 @@ def redraw_areas():
     for area in bpy.context.screen.areas :
         area.tag_redraw()
 
+def create_layers():
+    for scene in bpy.data.scenes :
+        if not scene.BLayers.layers :
+            src_layers = []
+            for ob in scene.objects :
+                for i,l in enumerate(ob.layers) :
+                    if l and i not in src_layers :
+                        src_layers.append(i)
 
+            for l_index in sorted(src_layers) :
+                l = scene.BLayers.layers.add()
+                l.index = l_index
+                l.name = 'Layer_%02d'%(l_index+1)
 
 def move_layer_up(collection,index) :
 

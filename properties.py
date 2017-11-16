@@ -22,7 +22,24 @@ def lock_layers(self,context):
             if lock:
                 ob.select = False
 
-    #if
+def hide_render_layers(self,context):
+    BLayers = context.scene.BLayers
+    layers = BLayers.layers.values()
+    item = BLayers.layers[layers.index(self)]
+
+    hide_render = self.hide_render
+    id = self.id
+
+    if item.type == 'LAYER' :
+        layer_to_hide = [self]
+    else :
+        layer_to_hide = [l for l in BLayers.layers if l.type=='LAYER' and l.id == id]
+
+    for l in layer_to_hide :
+        l.hide_render = hide_render
+        for ob in [o for o in context.scene.objects if o.layers[l.index]] :
+            ob.hide_render = hide_render
+
 
 def hide_layers(self,context) :
     BLayers = context.scene.BLayers
@@ -36,13 +53,13 @@ def hide_layers(self,context) :
             #l.lock = self.lock
 
 
-
 class LayersSettings(bpy.types.PropertyGroup):
     lock = bpy.props.BoolProperty(update = lock_layers)
     move = bpy.props.BoolProperty()
     index = bpy.props.IntProperty(default = -1)
     type = bpy.props.StringProperty(default = 'LAYER')
     visibility = bpy.props.BoolProperty(default = True,update=hide_layers)
+    hide_render = bpy.props.BoolProperty(default = False,update=hide_render_layers)
     expand = bpy.props.BoolProperty(default = True)
     id = bpy.props.IntProperty(default = -1)
 
