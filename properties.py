@@ -1,10 +1,15 @@
 import bpy
 import copy
+from .utils import source_layers
 
 def lock_layers(self,context):
-    BLayers = context.scene.BLayers
-    layers = BLayers.layers.values()
-    item = BLayers.layers[layers.index(self)]
+    scene = context.scene
+    ob = context.object
+    layers_from,BLayers,BLayersSettings,layers,objects,selected,nb_layers = source_layers()
+
+    #BLayers = scene.BLayers
+    layers = BLayers.values()
+    item = BLayers[layers.index(self)]
 
     lock = self.lock
     id = self.id
@@ -12,15 +17,16 @@ def lock_layers(self,context):
     if item.type == 'LAYER' :
         layer_to_lock = [self]
     else :
-        layer_to_lock = [l for l in BLayers.layers if l.type=='LAYER' and l.id == id]
-
+        layer_to_lock = [l for l in BLayers if l.type=='LAYER' and l.id == id]
 
     for l in layer_to_lock :
         l.lock = lock
-        for ob in [o for o in context.scene.objects if o.layers[l.index]] :
-            ob.hide_select = lock
+        for ob in scene.objects :
+            setattr(ob,'hide_select', lock)
             if lock:
                 ob.select = False
+
+
 
 def hide_render_layers(self,context):
     BLayers = context.scene.BLayers
@@ -63,8 +69,25 @@ class LayersSettings(bpy.types.PropertyGroup):
     expand = bpy.props.BoolProperty(default = True)
     id = bpy.props.IntProperty(default = -1)
 
-class BLayersSettings(bpy.types.PropertyGroup) :
+
+
+
+layer_type_items = easingItems = [
+    ("AUTO", "", "", 'REC', 1),
+    ("SCENE", "", "", 'SCENE_DATA', 2),
+    ("ARMATURE", "", "", 'MOD_ARMATURE', 3)]
+
+
+class BoneBLayersSettings(bpy.types.PropertyGroup) :
+    #layers = bpy.props.CollectionProperty(type = LayersSettings)
+    active_index = bpy.props.IntProperty()
+
+
+class SceneBLayersSettings(bpy.types.PropertyGroup) :
     id_count = bpy.props.IntProperty(default = 1)
-    layers = bpy.props.CollectionProperty(type = LayersSettings)
+    #layers = bpy.props.CollectionProperty(type = LayersSettings)
+    layer_type = bpy.props.EnumProperty(items = layer_type_items)
+    show_index = bpy.props.BoolProperty(default = False)
+    #bone_layers =
     active_index = bpy.props.IntProperty()
     #category = bpy.props.EnumProperty(items = gp_category)

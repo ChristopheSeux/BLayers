@@ -1,5 +1,5 @@
 bl_info = {
-    "name": "BLayers",
+    "name": "BLayers_beta",
     "author": "Christophe Seux",
     "version": (0, 1),
     "blender": (2, 78, 0),
@@ -24,78 +24,63 @@ import os
 import bpy
 from bpy.app.handlers import persistent
 
-# Key map changer
-class ModalOperator(bpy.types.Operator):
-    """Move an object with the mouse, example"""
-    bl_idname = "blayers.key_remmapper"
-    bl_label = "Key Remmaper"
-    bl_options = {'INTERNAL'}
-
-    def modal(self, context, event):
-        wm = bpy.context.window_manager
-        keyconfig = wm.keyconfigs[0].keymaps.get('Object Mode')
-        #print('check')
-        if keyconfig and keyconfig.keymap_items.get('object.move_to_layer'):
-            move_to_layer = keyconfig.keymap_items.get('object.move_to_layer')
-            move_to_layer.idname = 'blayers.objects_to_layer'
-
-            #keyconfig.keymap_items.remove(keymap)
-
-            print('check')
-
-            return {'CANCELLED'}
-
-        return {'PASS_THROUGH'}
-
-    def invoke(self, context, event):
-            context.window_manager.modal_handler_add(self)
-            return {'RUNNING_MODAL'}
-
-
-@persistent
-def change_key_map(dummy):
-    bpy.ops.blayers.key_remmapper('INVOKE_DEFAULT')
-    functions.create_layers()
-
 
 custom_icons = None
+
+addon_keymaps = []
 
 
 def register():
     utils.get_icons()
 
-    bpy.app.handlers.load_post.append(change_key_map)
+    #bpy.app.handlers.load_post.append(change_key_map)
     bpy.utils.register_module(__name__)
-    bpy.types.Scene.BLayers = bpy.props.PointerProperty(type = properties.BLayersSettings)
+    bpy.types.Scene.BLayersSettings = bpy.props.PointerProperty(type = properties.SceneBLayersSettings)
+    bpy.types.Scene.BLayers = bpy.props.CollectionProperty(type = properties.LayersSettings)
 
-    # unregister blender object to layer
+    bpy.types.Armature.BLayersSettings = bpy.props.PointerProperty(type = properties.BoneBLayersSettings)
+    bpy.types.Armature.BLayers = bpy.props.CollectionProperty(type = properties.LayersSettings)
+
     wm = bpy.context.window_manager
-    keyconfig = wm.keyconfigs[0].keymaps.get('Object Mode')
-    if keyconfig and keyconfig.keymap_items.get('object.move_to_layer'):
-        move_to_layer = keyconfig.keymap_items.get('object.move_to_layer')
-        move_to_layer.idname = 'blayers.objects_to_layer'
+    km = wm.keyconfigs.addon.keymaps.new(name='Object Mode', space_type='EMPTY')
+    kmi = km.keymap_items.new('blayers.objects_to_layer', 'M', 'PRESS')
+    addon_keymaps.append((km, kmi))
 
+    register.render_pass_class =[a for a in bpy.types.Panel.__subclasses__() if a.__name__ == 'CyclesRender_PT_layer_options'][0]
+    register.object_relation_class =[a for a in bpy.types.Panel.__subclasses__() if a.__name__ == 'OBJECT_PT_relations'][0]
+    register.object_group_class =[a for a in bpy.types.Panel.__subclasses__() if a.__name__ == 'OBJECT_PT_groups'][0]
 
     #unregister render layer panel
-    renderpasses =[a for a in bpy.types.Panel.__subclasses__() if a.__name__ == 'CyclesRender_PT_layer_options']
-    register.layer_panel = renderpasses[0]
-    register.rl_draw = register.layer_panel.draw
+    register.old_render_pass = register.render_pass_class.draw
+    register.render_pass_class.draw = panels.render_layer_draw
 
-    register.layer_panel.draw = panels.render_layer_draw
+    #unregister render layer panel
+    register.old_object_relation = register.object_relation_class.draw
+    register.object_relation_class.draw = panels.object_relation_draw
 
-
+    #unregister render layer panel
+    register.old_object_group = register.object_group_class.draw
+    register.object_group_class.draw = panels.object_group_draw
 
 def unregister():
-    bpy.utils.previews.remove(utils.custom_icons)
-    register.layer_panel.draw = register.rl_draw
-
     wm = bpy.context.window_manager
-    keyconfig = wm.keyconfigs[0].keymaps.get('Object Mode')
-    if keyconfig and keyconfig.keymap_items.get('blayers.objects_to_layer'):
-        move_to_layer = keyconfig.keymap_items.get('blayers.objects_to_layer')
-        move_to_layer.idname = 'object.move_to_layer'
+    keyconfig = wm.keyconfigs.user.keymaps.get('Object Mode')
+    #print('check')
+    if keyconfig and keyconfig.keymap_items.get('object.move_to_layer'):
+        move_to_layer = keyconfig.keymap_items.get('object.move_to_layer')
+        move_to_layer.active = True
+
+    bpy.utils.previews.remove(utils.custom_icons)
+    register.render_pass_class.draw = register.old_render_pass
+    register.object_relation_class.draw = register.old_object_relation
+    register.object_group_class.draw = register.old_object_group
+
+    for km, kmi in addon_keymaps:
+        km.keymap_items.remove(kmi)
+    addon_keymaps.clear()
 
 
-    bpy.app.handlers.load_post.remove(change_key_map)
+    #bpy.app.handlers.load_post.remove(change_key_map)
     del bpy.types.Scene.BLayers
+    del bpy.types.Armature.BLayers
     bpy.utils.unregister_module(__name__)
