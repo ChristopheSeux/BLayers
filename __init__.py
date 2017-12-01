@@ -35,11 +35,11 @@ def register():
 
     #bpy.app.handlers.load_post.append(change_key_map)
     bpy.utils.register_module(__name__)
-    bpy.types.Scene.BLayersSettings = bpy.props.PointerProperty(type = properties.SceneBLayersSettings)
-    bpy.types.Scene.BLayers = bpy.props.CollectionProperty(type = properties.LayersSettings)
+    bpy.types.Scene.BLayers = bpy.props.PointerProperty(type = properties.BLayersScene)
+    #bpy.types.Scene.BLayers = bpy.props.CollectionProperty(type = properties.LayersSettings)
 
-    bpy.types.Armature.BLayersSettings = bpy.props.PointerProperty(type = properties.BoneBLayersSettings)
-    bpy.types.Armature.BLayers = bpy.props.CollectionProperty(type = properties.LayersSettings)
+    bpy.types.Armature.BLayers = bpy.props.PointerProperty(type = properties.BLayersArmature)
+    #bpy.types.Armature.BLayers = bpy.props.CollectionProperty(type = properties.LayersSettings)
 
     wm = bpy.context.window_manager
     km = wm.keyconfigs.addon.keymaps.new(name='Object Mode', space_type='EMPTY')

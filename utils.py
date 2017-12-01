@@ -3,6 +3,10 @@ import bpy.utils.previews
 from os.path import join,basename,dirname,splitext
 from os import listdir
 
+def update_col_index(collection) :
+    for i,item in enumerate(collection) :
+        item.col_index = i
+
 def redraw_areas():
     for area in bpy.context.screen.areas :
         area.tag_redraw()
@@ -19,7 +23,7 @@ def get_icons():
 def source_layers():
     scene = bpy.context.scene
     ob = bpy.context.object
-    BLayersSettings = scene.BLayersSettings
+    BLayersSettings = scene.BLayers
 
     if BLayersSettings.layer_type == 'ARMATURE' :
         if ob and ob.type == 'ARMATURE' :
@@ -37,7 +41,7 @@ def source_layers():
             layer_mode = 'SCENE'
 
     if layer_mode == 'SCENE' :
-        return scene,scene.BLayers,scene.BLayersSettings,scene.layers,scene.objects,bpy.context.selected_pose_bones,20
+        return scene,scene.BLayers.layers,scene.BLayers,scene.layers,scene.objects,bpy.context.selected_objects
     else :
         selected_bones =[]
         if bpy.context.mode =='POSE':
@@ -45,4 +49,4 @@ def source_layers():
         elif bpy.context.mode =='EDIT_ARMATURE' :
             selected_bones = [b for b in bpy.context.selected_editable_bones]
 
-        return ob.data,ob.data.BLayers,ob.data.BLayersSettings,ob.data.layers,ob.data.bones,selected_bones,31
+        return ob.data,ob.data.BLayers.layers,ob.data.BLayers,ob.data.layers,ob.data.bones,selected_bones

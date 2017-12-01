@@ -15,7 +15,7 @@ def object_group_draw(self, context):
     layout = self.layout
     scene = context.scene
     #BLayersSettings = scene.BLayersSettings
-    layers = [l for l in scene.BLayers if l.type == 'LAYER']
+    layers = [l for l in scene.BLayers.layers if l.type == 'LAYER']
 
     obj = context.object
 
@@ -57,7 +57,7 @@ def object_relation_draw(self, context):
     layout = self.layout
     scene = context.scene
     #BLayers = scene.BLayers
-    layers = [l for l in scene.BLayers if l.type == 'LAYER']
+    layers = [l for l in scene.BLayers.layers if l.type == 'LAYER']
     ob = context.object
 
     split = layout.split()
@@ -106,7 +106,7 @@ def render_layer_draw(self, context):
     rl = rd.layers.active
 
     if BLayers.layers :
-        layers = [l for l in scene.BLayers if l.type == 'LAYER']
+        layers = [l for l in scene.BLayers.layers if l.type == 'LAYER']
         row = layout.row()
 
         col = row.column(align = True)
@@ -163,7 +163,7 @@ class BLayerSpecialMenu(bpy.types.Menu):
         layout = self.layout
         #layout.operator("blayers.select_objects", icon='RESTRICT_SELECT_OFF', text="Select Objects")
         layout.operator("blayers.synchronise_layers", icon='FILE_REFRESH', text="Synchronise Layers")
-        layout.prop(context.scene.BLayersSettings,'show_index')
+        layout.prop(context.scene.BLayers,'show_index')
 
 
 class BLayersList(bpy.types.UIList):
@@ -171,7 +171,7 @@ class BLayersList(bpy.types.UIList):
         ob = context.object
         scene = context.scene
 
-        layers_from,BLayers,BLayersSettings,layers,objects,selected,nb_layers = source_layers()
+        layers_from,BLayers,BLayersSettings,layers,objects,selected = source_layers()
         active_ob = objects.active
 
         view_3d = context.area.spaces.active  # Ensured it is a 'VIEW_3D' in panel's poll(), weak... :/
@@ -222,7 +222,7 @@ class BLayersList(bpy.types.UIList):
                 render_icon =  'RESTRICT_RENDER_ON' if item.hide_render else  'RESTRICT_RENDER_OFF'
                 row.prop(item,'hide_render',icon =render_icon ,text='', emboss=False)
 
-            if scene.BLayersSettings.show_index :
+            if scene.BLayers.show_index :
                 row.label(str(item.index))
 
 
@@ -233,7 +233,7 @@ class BLayersList(bpy.types.UIList):
         scene = context.scene
         ob = context.object
 
-        layers_from,BLayers,BLayersSettings,layers,objects,selected,nb_layers = source_layers()
+        layers_from,BLayers,BLayersSettings,layers,objects,selected = source_layers()
 
         layers = getattr(data, propname)
         helper_funcs = bpy.types.UI_UL_list
@@ -277,7 +277,7 @@ class GPLayerPanel(bpy.types.Panel) :
 
         ob = context.object
         scene = context.scene
-        layers_from,BLayers,BLayersSettings,layers,objects,selected,nb_layers = source_layers()
+        layers_from,BLayers,BLayersSettings,layers,objects,selected = source_layers()
 
         main_row = layout.row()
         #box_row = box.row(align = True)
@@ -286,7 +286,7 @@ class GPLayerPanel(bpy.types.Panel) :
 
         #col = row.column(align = False)
         layer_type_row = left_col.row(align=True)
-        layer_type_row.prop(scene.BLayersSettings,'layer_type',expand = True)
+        layer_type_row.prop(scene.BLayers,'layer_type',expand = True)
 
         layer_type_row.separator()
         layer_type_row.label("")
@@ -301,7 +301,7 @@ class GPLayerPanel(bpy.types.Panel) :
 
 
         if BLayers  :
-            left_col.template_list("BLayersList", "", layers_from, "BLayers", BLayersSettings, "active_index", rows=6)
+            left_col.template_list("BLayersList", "", BLayersSettings, "layers", BLayersSettings, "active_index", rows=6)
         else :
             left_col.operator("blayers.synchronise_layers", icon='FILE_REFRESH', text="Synchronise Layers")
 

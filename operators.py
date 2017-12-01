@@ -1,7 +1,7 @@
 import bpy
 
 from .functions import *
-from .utils import source_layers
+from .utils import source_layers,update_col_index
 
 
 class ChangeShortcut(bpy.types.Operator):
@@ -28,7 +28,7 @@ class SynchroniseLayers(bpy.types.Operator):
         scene = context.scene
         ob = context.object
 
-        layers_from,BLayers,BLayersSettings,layers,objects,selected,nb_layers = source_layers()
+        layers_from,BLayers,BLayersSettings,layers,objects,selected = source_layers()
 
         full_layers = []
         existing_indexes = [l.index for l in BLayers if l.type =='LAYER']
@@ -52,6 +52,8 @@ class SynchroniseLayers(bpy.types.Operator):
                 layer.name = 'Layer_%02d'%free_number
                 layer.index = free_index
                 layer.type = 'LAYER'
+
+        update_col_index(BLayers)
         return {'FINISHED'}
 
 
@@ -62,14 +64,14 @@ class ObjectsToLayer(bpy.types.Operator):
 
     @classmethod
     def poll(self,context) :
-        layers_from,BLayers,BLayersSettings,layers,objects,selected,nb_layers = source_layers()
+        layers_from,BLayers,BLayersSettings,layers,objects,selected = source_layers()
         return True if selected and len(BLayers) else False
 
     def draw(self,context) :
         scene = context.scene
         layout = self.layout
 
-        layers_from,BLayers,BLayersSettings,layers,objects,selected,nb_layers = source_layers()
+        layers_from,BLayers,BLayersSettings,layers,objects,selected = source_layers()
 
         col = layout.column(align=True)
         for l in [l for l in BLayers if l.type == 'LAYER'] :
@@ -78,7 +80,7 @@ class ObjectsToLayer(bpy.types.Operator):
 
     def execute(self, context):
         scene = context.scene
-        layers_from,BLayers,BLayersSettings,layers,objects,selected,nb_layers = source_layers()
+        layers_from,BLayers,BLayersSettings,layers,objects,selected = source_layers()
 
         dst_layers = [l.index for l in BLayers if l.move]
 
@@ -94,7 +96,7 @@ class ObjectsToLayer(bpy.types.Operator):
 
     def invoke(self, context, event):
         scene = context.scene
-        layers_from,BLayers,BLayersSettings,layers,objects,selected,nb_layers = source_layers()
+        layers_from,BLayers,BLayersSettings,layers,objects,selected = source_layers()
         index = BLayers.active_index
 
         self.src_layers = []
@@ -123,7 +125,7 @@ class SelectObjects(bpy.types.Operator):
     def execute(self, context):
         scene = context.scene
         ob = context.object
-        layers_from,BLayers,BLayersSettings,layers,objects,selected,nb_layers = source_layers()
+        layers_from,BLayers,BLayersSettings,layers,objects,selected = source_layers()
 
         active_layer = BLayers[BLayersSettings.active_index]
         active_index = active_layer.index
@@ -140,7 +142,7 @@ class SelectObjects(bpy.types.Operator):
                     objects.active = True
 
 
-
+        update_col_index(BLayers)
         return {'FINISHED'}
 
 class ToggleLayer(bpy.types.Operator):
@@ -153,7 +155,7 @@ class ToggleLayer(bpy.types.Operator):
     def execute(self, context):
         scene = context.scene
 
-        layers_from,BLayers,BLayersSettings,layers,objects,selected,nb_layers = source_layers()
+        layers_from,BLayers,BLayersSettings,layers,objects,selected = source_layers()
 
         active_layer = BLayers[BLayersSettings.active_index]
         passive_layers = [l for l in BLayers if l !=active_layer]
@@ -192,7 +194,7 @@ class ToogleLayerHide(bpy.types.Operator):
     def execute(self, context):
         scene = context.scene
 
-        layers_from,BLayers,BLayersSettings,layers,objects,selected,nb_layers = source_layers()
+        layers_from,BLayers,BLayersSettings,layers,objects,selected = source_layers()
 
         active_layer = BLayers[BLayersSettings.active_index]
         active_index = active_layer.index
@@ -229,7 +231,7 @@ class MoveLayer(bpy.types.Operator):
         scene = context.scene
         ob = context.object
 
-        layers_from,BLayers,BLayersSettings,layers,objects,selected,nb_layers = source_layers()
+        layers_from,BLayers,BLayersSettings,layers,objects,selected = source_layers()
 
         col_index = BLayersSettings.active_index
         active_layer = BLayers[col_index]
@@ -249,7 +251,7 @@ class MoveLayer(bpy.types.Operator):
             else : # it's a group with layers
                 j=0
                 for i in reversed(same_group) :
-                    layers.move(i,new_index+j)
+                    BLayers.move(i,new_index+j)
                     j-=1
 
                 new_index = new_index+j+1
@@ -267,6 +269,7 @@ class MoveLayer(bpy.types.Operator):
 
         BLayersSettings.active_index = new_index
 
+        update_col_index(BLayers)
         redraw_areas()
         return {'FINISHED'}
 
@@ -280,7 +283,7 @@ class RemoveLayer(bpy.types.Operator):
         scene = context.scene
         ob = context.object
 
-        layers_from,BLayers,BLayersSettings,layers,objects,selected,nb_layers = source_layers()
+        layers_from,BLayers,BLayersSettings,layers,objects,selected = source_layers()
 
         col_index = BLayersSettings.active_index
         layer = BLayers[col_index]
@@ -295,6 +298,7 @@ class RemoveLayer(bpy.types.Operator):
         else :
             self.report({'ERROR'},'You only can delete empty layer')
 
+        update_col_index(BLayers)
         redraw_areas()
         return {'FINISHED'}
 
@@ -340,19 +344,20 @@ class MoveInGroup(bpy.types.Operator):
         scene = context.scene
         ob = context.object
 
-        layers_from,BLayers,BLayersSettings,layers,objects,selected,nb_layers = source_layers()
+        layers_from,BLayers,BLayersSettings,layers,objects,selected = source_layers()
 
-        col_index = BLayers.active_index
-        layer = BLayers.layers[col_index]
+        col_index = BLayersSettings.active_index
+        layer = BLayers[col_index]
 
         if layer.type =='LAYER' :
-            group = BLayers.layers[self.index]
+            group = BLayers[self.index]
             offset = 1 if col_index > self.index else 0
             layer.id = group.id
-            BLayers.layers.move(col_index,self.index+offset)
-            BLayers.active_index = self.index+offset
+            BLayers.move(col_index,self.index+offset)
+            BLayersSettings.active_index = self.index+offset
         redraw_areas()
 
+        update_col_index(BLayers)
         return {'FINISHED'}
 
 class AddLayer(bpy.types.Operator):
@@ -366,12 +371,12 @@ class AddLayer(bpy.types.Operator):
         scene = context.scene
         ob = context.object
 
-        layers_from,BLayers,BLayersSettings,layers,objects,selected,nb_layers = source_layers()
+        layers_from,BLayers,BLayersSettings,layers,objects,selected = source_layers()
 
         existing_indexes = [l.index for l in BLayers if l.type =='LAYER']
 
         if self.type == 'GROUP' :
-            group = BLayers.layers.add()
+            group = BLayers.add()
 
             existing_number = [int(l.name[-2:]) for l in BLayers if l.name.startswith('GROUP_') and l.name[-2:].isnumeric()]
             free_number = max(existing_number)+1 if existing_number else 1
@@ -384,12 +389,12 @@ class AddLayer(bpy.types.Operator):
             group.type = 'GROUP'
             scene.BLayers.id_count +=1
             group.id = scene.BLayers.id_count
-            BLayers.active_index = len(BLayers)-1
+            BLayersSettings.active_index = len(BLayers)-1
 
         else :
-            if len(existing_indexes)<nb_layers+1 :
+            if len(existing_indexes)<len(layers) :
                 free_index =  0
-                for i in range(nb_layers) :
+                for i in range(len(layers)-1) :
                     if not i in existing_indexes :
                         free_index = i
                         break
@@ -410,11 +415,11 @@ class AddLayer(bpy.types.Operator):
                 layers[free_index] = True
 
                 if self.type == 'LAYER_FROM_SELECTED' :
-                    empty_layers = [False]*20
+                    empty_layers = [False]*len(layers)
                     empty_layers[free_index] = True
                     for ob in selected :
                         ob.layers = empty_layers
 
+        update_col_index(BLayers)
         redraw_areas()
-
         return {'FINISHED'}
