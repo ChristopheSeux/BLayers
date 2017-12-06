@@ -3,6 +3,45 @@ import bpy
 from .functions import *
 from .utils import source_layers,update_col_index
 
+class CopyLayers(bpy.types.Operator):
+    """Change BLayers to clipboard"""
+    bl_idname = "blayers.copy_layers"
+    bl_label = "Copy BLayer"
+
+    def execute(self, context):
+        layers_from,BLayers,BLayersSettings,layers,objects,selected = source_layers()
+
+        Layers = []
+        for layer in BLayers :
+            Layers.append({'name' :layer.name,'type':layer.type,'index':layer.index,'id' : layer.id })
+
+        context.window_manager.clipboard = str(Layers)
+        return {'FINISHED'}
+
+class PasteLayers(bpy.types.Operator):
+    """Past BLayers from clipboard"""
+
+    bl_idname = "blayers.paste_layers"
+    bl_label = "Copy BLayer"
+
+    def execute(self, context):
+        layers_from,BLayers,BLayersSettings,layers,objects,selected = source_layers()
+
+        #delete_layer
+        for i in range(len(BLayers)) :
+            #print(i)
+            BLayers.remove(0)
+
+        try :
+            for layer_info in eval(context.window_manager.clipboard) :
+                layer = BLayers.add()
+                for attr,value in layer_info.items() :
+                    setattr(layer,attr,value)
+        except :
+            self.report({'ERROR'},"Wrong ClipBoard")
+
+        return {'FINISHED'}
+
 
 class ChangeShortcut(bpy.types.Operator):
     """Change BLayers shortcut"""
@@ -20,7 +59,7 @@ class ChangeShortcut(bpy.types.Operator):
         return {'FINISHED'}
 
 class SynchroniseLayers(bpy.types.Operator):
-    """Synchronise BLayers"""
+    """Create missings layers"""
     bl_idname = "blayers.synchronise_layers"
     bl_label = "Synchronise Layers"
 
@@ -58,9 +97,11 @@ class SynchroniseLayers(bpy.types.Operator):
 
 
 class ObjectsToLayer(bpy.types.Operator):
-    """Remove Parent"""
+    """Move objects to layers"""
     bl_idname = "blayers.objects_to_layer"
     bl_label = "Objects To Layer"
+
+    layer_index = bpy.props.IntProperty()
 
     @classmethod
     def poll(self,context) :
@@ -82,25 +123,31 @@ class ObjectsToLayer(bpy.types.Operator):
         scene = context.scene
         layers_from,BLayers,BLayersSettings,layers,objects,selected = source_layers()
 
-        dst_layers = [l.index for l in BLayers if l.move]
+        if not self.dst_layers :
+            self.dst_layers = [l.index for l in BLayers if l.move]
 
-        for ob in context.selected_objects :
-            for i in dst_layers :
+        print(selected)
+
+        for ob in selected :
+            for i in self.dst_layers :
                 ob.layers[i]=True
 
-            for i in self.src_layers :
-                if i not in dst_layers :
-                    ob.layers[i]=False
+            if not self.shift :
+                for i in self.src_layers :
+                    if i not in self.dst_layers :
+                        ob.layers[i]=False
 
         return {'FINISHED'}
 
     def invoke(self, context, event):
         scene = context.scene
         layers_from,BLayers,BLayersSettings,layers,objects,selected = source_layers()
-        index = BLayers.active_index
+        index = BLayersSettings.active_index
+
+        self.shift = event.shift
 
         self.src_layers = []
-        for ob in context.selected_objects :
+        for ob in selected :
             for i,l in enumerate(ob.layers) :
                 if l and i not in self.src_layers :
                     self.src_layers.append(i)
@@ -113,12 +160,18 @@ class ObjectsToLayer(bpy.types.Operator):
                     l.move = True
                 else :
                     l.move = False
-        wm = context.window_manager
-        return wm.invoke_props_dialog(self,width=175)
+
+        if event.type == 'M' :
+            self.dst_layers = []
+            wm = context.window_manager
+            return wm.invoke_props_dialog(self,width=175)
+        else :
+            self.dst_layers = [self.layer_index]
+            return self.execute(context)
 
 
 class SelectObjects(bpy.types.Operator):
-    """Isolate layer lock"""
+    """Select objects on layer"""
     bl_idname = "blayers.select_objects"
     bl_label = "Select all objects on active layer"
 
@@ -136,17 +189,17 @@ class SelectObjects(bpy.types.Operator):
             layers = [l.index for l in BLayers if l.id == active_layer.id]
 
         for ob in objects :
-            for index in real_layers :
+            for index in layers :
                 if ob.layers[index] :
                     ob.select = True
-                    objects.active = True
+                    objects.active = ob
 
 
         update_col_index(BLayers)
         return {'FINISHED'}
 
 class ToggleLayer(bpy.types.Operator):
-    """Isolate layer lock"""
+    """Isolate property"""
     bl_idname = "blayers.toogle_layer"
     bl_label = "Toggle Layer Render"
 
@@ -187,7 +240,7 @@ class ToggleLayer(bpy.types.Operator):
 
 
 class ToogleLayerHide(bpy.types.Operator):
-    """Remove Parent"""
+    """Isolate Layer"""
     bl_idname = "blayers.toogle_layer_hide"
     bl_label = "Toggle Layer Hide"
 
@@ -221,7 +274,7 @@ class ToogleLayerHide(bpy.types.Operator):
 
 
 class MoveLayer(bpy.types.Operator):
-    """Remove Parent"""
+    """Move Layer up or down"""
     bl_idname = "blayers.layer_move"
     bl_label = "Move Layer"
 
@@ -238,15 +291,19 @@ class MoveLayer(bpy.types.Operator):
 
         same_group = same_prop(BLayers,col_index,'id')
 
-        if active_layer.type == 'LAYER' :
-            if col_index == max(same_group) and self.step > 0 or col_index == min(same_group)+1 and self.step < 0:
-                active_layer.id = -1
+        #if active_layer.type == 'LAYER' :
+        #    if col_index == max(same_group) and self.step > 0 or col_index == min(same_group)+1 and self.step < 0:
+        #        active_layer.id = -1
 
         if self.step > 0 : #DOWN
             new_index = move_layer_down(BLayers,col_index)
 
             if active_layer.type == 'LAYER' or (active_layer.type == 'GROUP' and len(same_group)==1):
-                BLayers.move(col_index,new_index)
+                if active_layer.type == 'LAYER' and active_layer.id!=-1 and col_index == max(same_group) :
+                    active_layer.id = -1
+                    new_index = col_index
+                else :
+                    BLayers.move(col_index,new_index)
 
             else : # it's a group with layers
                 j=0
@@ -258,6 +315,8 @@ class MoveLayer(bpy.types.Operator):
         elif self.step < 0 : #UP
             new_index = move_layer_up(BLayers,col_index)
             if active_layer.type == 'LAYER' or (active_layer.type == 'GROUP' and len(same_group)==1):
+                if active_layer.type == 'LAYER' and active_layer.id!=-1 and col_index == min(same_group)+1 :
+                    active_layer.id = -1
                 BLayers.move(col_index,new_index)
 
             else  :
@@ -275,7 +334,7 @@ class MoveLayer(bpy.types.Operator):
 
 
 class RemoveLayer(bpy.types.Operator):
-    """Remove Parent"""
+    """Remove Layer"""
     bl_idname = "blayers.remove_layer"
     bl_label = "Remove Gpencil Layer"
 
@@ -334,7 +393,7 @@ class AddGroup(bpy.types.Operator):
     '''
 
 class MoveInGroup(bpy.types.Operator):
-    """Remove Parent"""
+    """Put layer in the group"""
     bl_idname = "blayers.move_in_group"
     bl_label = "Add Gpencil Layer"
 
@@ -361,7 +420,7 @@ class MoveInGroup(bpy.types.Operator):
         return {'FINISHED'}
 
 class AddLayer(bpy.types.Operator):
-    """Remove Parent"""
+    """Add Layer"""
     bl_idname = "blayers.add_layer"
     bl_label = "Add Gpencil Layer"
 

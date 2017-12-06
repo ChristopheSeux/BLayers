@@ -25,14 +25,17 @@ def move_layer_up(collection,index) :
 
     above_layer = reversed([i for i,l in enumerate(collection) if i< index])
 
-    new_index =  0
-    for i in above_layer :
-        layer = collection[i]
-        if layer.type == 'LAYER' and layer.id ==-1 or layer.type == 'GROUP' :
-            new_index = i
-            break
+    if collection[index].type == 'LAYER' and collection[index].id !=-1 :
+        return index-1
+    else :
+        new_index =  0
+        for i in above_layer :
+            layer = collection[i]
+            if layer.type == 'LAYER' and layer.id ==-1 or layer.type == 'GROUP' :
+                new_index = i
+                break
 
-    return new_index
+        return new_index
 
 def move_layer_down(collection,index):
     #print('active_index',collection[i].id)
@@ -53,7 +56,6 @@ def move_layer_down(collection,index):
         elif layer.type == 'GROUP' and len(same_group)==1 :
             new_index = i
             break
-
 
         elif layer.type == 'LAYER' and layer.id !=-1 and i == max(same_group):
             new_index = i

@@ -1,5 +1,5 @@
 bl_info = {
-    "name": "BLayers_beta",
+    "name": "BLayers",
     "author": "Christophe Seux",
     "version": (0, 1),
     "blender": (2, 78, 0),
@@ -50,6 +50,7 @@ def register():
     register.object_relation_class =[a for a in bpy.types.Panel.__subclasses__() if a.__name__ == 'OBJECT_PT_relations'][0]
     register.object_group_class =[a for a in bpy.types.Panel.__subclasses__() if a.__name__ == 'OBJECT_PT_groups'][0]
 
+    register.relations_extras =[a for a in bpy.types.Panel.__subclasses__() if a.__name__ == 'OBJECT_PT_relations_extras'][0]
     #unregister render layer panel
     register.old_render_pass = register.render_pass_class.draw
     register.render_pass_class.draw = panels.render_layer_draw
@@ -61,6 +62,9 @@ def register():
     #unregister render layer panel
     register.old_object_group = register.object_group_class.draw
     register.object_group_class.draw = panels.object_group_draw
+
+    #unregister relations_extras
+    bpy.utils.unregister_class(register.relations_extras)
 
 def unregister():
     wm = bpy.context.window_manager
@@ -75,6 +79,8 @@ def unregister():
     register.object_relation_class.draw = register.old_object_relation
     register.object_group_class.draw = register.old_object_group
 
+    bpy.utils.register_class(register.relations_extras)
+
     for km, kmi in addon_keymaps:
         km.keymap_items.remove(kmi)
     addon_keymaps.clear()
@@ -83,4 +89,6 @@ def unregister():
     #bpy.app.handlers.load_post.remove(change_key_map)
     del bpy.types.Scene.BLayers
     del bpy.types.Armature.BLayers
+
+
     bpy.utils.unregister_module(__name__)

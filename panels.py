@@ -101,7 +101,7 @@ def render_layer_draw(self, context):
     layout = self.layout
     #main_col = layout.column(align = True)
     scene = context.scene
-    #BLayers = scene.BLayers
+    BLayers = scene.BLayers
     rd = scene.render
     rl = rd.layers.active
 
@@ -147,6 +147,7 @@ def render_layer_draw(self, context):
     col.prop(rl, "use_strand", "Use Hair")
 
 class BLayerTypeMenu(bpy.types.Menu):
+    """Add Group or Layer"""
     bl_label = "Choose Layer type"
 
     def draw(self, context):
@@ -157,6 +158,7 @@ class BLayerTypeMenu(bpy.types.Menu):
         layout.operator("blayers.add_layer", icon='NEWFOLDER',text = 'Add Group').type = 'GROUP'
 
 class BLayerSpecialMenu(bpy.types.Menu):
+    """Special Menu"""
     bl_label = "Special Layer menu"
 
     def draw(self, context):
@@ -164,6 +166,13 @@ class BLayerSpecialMenu(bpy.types.Menu):
         #layout.operator("blayers.select_objects", icon='RESTRICT_SELECT_OFF', text="Select Objects")
         layout.operator("blayers.synchronise_layers", icon='FILE_REFRESH', text="Synchronise Layers")
         layout.prop(context.scene.BLayers,'show_index')
+
+        layout.operator("blayers.copy_layers", icon='COPYDOWN', text="Copy Layers")
+        layout.operator("blayers.paste_layers", icon='PASTEDOWN', text="Paste Layers")
+
+        layout.separator()
+        layout.operator("blayers.objects_to_layer", icon='HAND', text="Move to Layers")
+
 
 
 class BLayersList(bpy.types.UIList):
@@ -193,7 +202,14 @@ class BLayersList(bpy.types.UIList):
                 row.separator()
                 row.operator("blayers.move_in_group",icon_value =utils.custom_icons["IN_GROUP"].icon_id ,text='',emboss= False).index = index
 
-            else :
+                icon = "LOCKED" if item.lock_group else "UNLOCKED"
+                op = row.prop(item,"lock_group", text="", emboss=False, icon=icon)
+
+                if layers_from == bpy.context.scene :
+                    render_icon =  'RESTRICT_RENDER_ON' if item.hide_group_render else  'RESTRICT_RENDER_OFF'
+                    row.prop(item,'hide_group_render',icon =render_icon ,text='', emboss=False)
+
+            else : #item type = LAYER
                 layer_used_icon = 'BLANK1'
                 layer_on = layers_from.layers[item.index]
                 active_ob_on_layer = active_ob and active_ob.layers[item.index]
@@ -215,12 +231,15 @@ class BLayersList(bpy.types.UIList):
                 elif ob_on_layer:
                     row.label(icon='LAYER_USED')
 
-            icon = "LOCKED" if item.lock else "UNLOCKED"
-            op = row.prop(item,"lock", text="", emboss=False, icon=icon)
+                icon = "LOCKED" if item.lock else "UNLOCKED"
+                op = row.prop(item,"lock", text="", emboss=False, icon=icon)
 
-            if layers_from == bpy.context.scene :
-                render_icon =  'RESTRICT_RENDER_ON' if item.hide_render else  'RESTRICT_RENDER_OFF'
-                row.prop(item,'hide_render',icon =render_icon ,text='', emboss=False)
+                if layers_from == bpy.context.scene :
+                    render_icon =  'RESTRICT_RENDER_ON' if item.hide_render else  'RESTRICT_RENDER_OFF'
+                    row.prop(item,'hide_render',icon =render_icon ,text='', emboss=False)
+                else :
+                    pass
+                    #row.operator("blayers.objects_to_layer",icon = 'BONE_DATA',text='',emboss=False).layer_index = item.index
 
             if scene.BLayers.show_index :
                 row.label(str(item.index))
@@ -318,3 +337,6 @@ class GPLayerPanel(bpy.types.Panel) :
 
         right_col.separator()
         right_col.menu("BLayerSpecialMenu", icon="DOWNARROW_HLT", text="")
+        right_col.separator()
+        if BLayers and BLayersSettings.active_index !=-1:
+            right_col.operator("blayers.objects_to_layer", icon='HAND', text="").layer_index = BLayers[BLayersSettings.active_index].index
