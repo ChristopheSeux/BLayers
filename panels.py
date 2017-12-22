@@ -242,7 +242,7 @@ class BLayersList(bpy.types.UIList):
                     #row.operator("blayers.objects_to_layer",icon = 'BONE_DATA',text='',emboss=False).layer_index = item.index
 
             if scene.BLayers.show_index :
-                row.label(str(item.index))
+                row.prop(item,"index",text = '')
 
 
         elif self.layout_type in {'GRID'}:
