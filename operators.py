@@ -1,7 +1,267 @@
 import bpy
 
 from .functions import *
-from .utils import source_layers,update_col_index
+from .utils import source_layers,update_col_index,sort_layer
+
+class LayerPresetManagment(bpy.types.Operator) :
+    """Layer Preset Management"""
+    bl_idname = "blayers.layer_preset_management"
+    bl_label = "Add or Remove Layers Preset"
+
+    operation = bpy.props.StringProperty()
+    preset = bpy.props.StringProperty()
+    preset_name = bpy.props.StringProperty()
+
+    def draw(self,context) :
+        layout = self.layout
+
+        layout.prop(self,"preset_name")
+
+    def execute(self, context):
+        operation = self.operation
+        ob = context.object
+
+        BLayers = ob.data.BLayers
+
+        sorted_layers = sort_layer([l for l in BLayers.layers if l.UI_visible])
+        selected_layers =  [l for l in BLayers.layers if l.type == 'LAYER' and l.move]
+
+        if not BLayers.get("presets"):
+            BLayers["presets"] = {}
+
+        if operation == 'ADD' :
+            BLayers["presets"][self.preset_name] = [l.index for l in BLayers.layers if l.UI_visible and l.move]
+
+        elif operation == 'REMOVE' :
+            BLayers["presets"].pop(self.preset)
+
+        elif operation == 'APPLY' :
+            layers_to_show =  list(BLayers["presets"][self.preset])
+            print('###')
+            print(layers_to_show)
+            for i,l in enumerate(context.object.data.layers):
+                if i in layers_to_show :
+                    context.object.data.layers[i] = True
+                else :
+                    context.object.data.layers[i] = False
+
+        redraw_areas()
+        return {'FINISHED'}
+
+    def invoke(self,context,event) :
+        wm = context.window_manager
+        if self.operation == 'ADD' :
+            return wm.invoke_props_dialog(self)
+        else :
+            return self.execute(context)
+
+class LayerSeparator(bpy.types.Operator) :
+    """Layer Separator"""
+    bl_idname = "blayers.layer_separator"
+    bl_label = "Add Layer separator"
+
+    operation = bpy.props.StringProperty()
+
+    def execute(self, context):
+        operation = self.operation
+        ob = context.object
+
+        BLayers = ob.data.BLayers.layers
+
+        sorted_layers = sort_layer([l for l in BLayers if l.UI_visible])
+        selected_layers =  [l for l in BLayers if l.type == 'LAYER' and l.move]
+
+        if operation == 'ADD' :
+            for l in selected_layers :
+                l.v_separator = True
+
+        else :
+            for l in selected_layers :
+                l.v_separator = False
+
+        return {'FINISHED'}
+
+
+class MoveRigLayers(bpy.types.Operator) :
+    """Move rig layers"""
+    bl_idname = "blayers.move_rig_layers"
+    bl_label = "Move Rig Layers"
+
+    operation = bpy.props.StringProperty()
+
+
+    def execute(self, context):
+        operation = self.operation
+        ob = context.object
+
+        BLayers = ob.data.BLayers.layers
+
+        sorted_layers = sort_layer([l for l in BLayers if l.UI_visible])
+        selected_layers =  [l for l in BLayers if l.type == 'LAYER' and l.move]
+
+        if operation == 'UP' :
+            for i,row in enumerate(sorted_layers) :
+                index = row[0].column
+                above_layer = sorted_layers[i-1]
+                above_index = above_layer[0].column
+
+                if len([l for l in BLayers if l.column == index and l.move]): # if at least one layer in the row is selected
+                    for layer in row :
+                        layer.column = above_index
+
+                    for layer in above_layer :
+                        layer.column = index
+                    break
+
+
+        elif operation == 'DOWN' :
+            for i,row in enumerate(sorted_layers) :
+                index = row[0].column
+                above_layer = sorted_layers[i+1]
+                above_index = above_layer[0].column
+
+                if len([l for l in BLayers if l.column == index and l.move]): # if at least one layer in the row is selected
+                    for layer in row :
+                        layer.column = above_index
+
+                    for layer in above_layer :
+                        layer.column = index
+                    break
+
+        elif operation == 'LEFT' :
+            for row in sorted_layers :
+                for i,l in enumerate(row) :
+                    if l.move :
+                        index = l.row
+                        left_layer = row[i-1]
+                        l.row = left_layer.row
+                        left_layer.row = index
+
+        elif operation == 'RIGHT' :
+            for row in sorted_layers :
+                for i,l in enumerate(row) :
+                    if l.move :
+                        index = l.row
+                        left_layer = row[i+1]
+                        l.row = left_layer.row
+                        left_layer.row = index
+
+        elif operation == 'MERGE' :
+            for i,row in enumerate(sorted_layers) :
+                for l in row :
+                    if l.move :
+                        print('### lalal')
+                        print([l.row for l in sorted_layers[i+1]])
+
+                        l.row = max([l.row for l in sorted_layers[i+1]])+1
+                        l.column = sorted_layers[i+1][0].column
+
+
+        elif operation == 'EXTRACT' :
+            for i,row in enumerate(sorted_layers) :
+                if len([l for l in row if l.move]) : # if a layer is selected
+                    for below_row in [r for j,r in enumerate(sorted_layers) if j>i] :
+                        for l in below_row :
+                            l.column+=1
+                    for l in [l for l in row if not l.move] :
+                        l.column+=1
+                        l.row = 0
+
+
+        return {'FINISHED'}
+
+        '''
+    def invoke(self, context, event):
+        scene = context.scene
+        ob = context.object
+        layout = self.layout
+
+        BLayers = ob.data.BLayers.layers
+        for l in [l for l in BLayers if l.type == 'LAYER'] :
+            l.move = False
+
+        return self.execute(context)
+        '''
+
+
+class AddLayerToPanel(bpy.types.Operator) :
+    """Add layer to the right panel"""
+    bl_idname = "blayers.add_layer_to_panel"
+    bl_label = "Add Layer to the right panel"
+
+    @classmethod
+    def poll(self,context) :
+        return context.object.type == 'ARMATURE'
+
+
+    def draw(self,context) :
+        scene = context.scene
+        ob = context.object
+        layout = self.layout
+        BLayers = ob.data.BLayers.layers
+
+        col = layout.column(align=True)
+        for l in [l for l in BLayers if l.type == 'LAYER'] :
+            col.prop(l,'move',toggle = True,text = l.name)
+
+    def execute(self, context):
+        scene = context.scene
+        ob = context.object
+        BLayers = ob.data.BLayers.layers
+
+        for l in BLayers :
+            if l.move :
+                if not l.UI_visible :
+                    l.UI_visible= True
+                    l.column = max([l.column for l in BLayers if l.type == 'LAYER'])+1
+            else :
+                l.UI_visible= False
+                l.column = 0
+
+
+        redraw_areas()
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        scene = context.scene
+        ob = context.object
+        layout = self.layout
+
+        BLayers = ob.data.BLayers.layers
+
+        for l in BLayers :
+            if l.UI_visible :
+                l.move = True
+            else :
+                l.move = False
+
+
+        wm = context.window_manager
+        return wm.invoke_props_dialog(self,width=150)
+
+
+class LayerPreset(bpy.types.Operator):
+    """Display layers from preset"""
+    bl_idname = 'blayers.layer_preset'
+    bl_label = "BLayer Preset"
+
+    preset = bpy.props.StringProperty()
+
+    presets = {
+        "BASIC" : [1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        "COMPLET" : [1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    }
+
+    def execute(self, context):
+        preset = self.preset
+        ob = context.object
+
+        ob.data.layers  = [bool(l) for l in self.presets[preset]]
+
+
+        return {'FINISHED'}
+
+
 
 class CopyLayers(bpy.types.Operator):
     """Change BLayers to clipboard"""
@@ -11,11 +271,26 @@ class CopyLayers(bpy.types.Operator):
     def execute(self, context):
         layers_from,BLayers,BLayersSettings,layers,objects,selected = source_layers()
 
-        Layers = []
-        for layer in BLayers :
-            Layers.append({'name' :layer.name,'type':layer.type,'index':layer.index,'id' : layer.id })
+        Layers = {}
+        Layers['presets'] = BLayersSettings['presets'].to_dict()
+        Layers['objects'] = {}
+        for ob in objects :
+            Layers['objects'][ob.name] = list(ob.layers)
+
+        Layers['layers'] = []
+        for l in BLayers :
+            Layers['layers'].append({   'name' :l.name,
+                                        'type':l.type,
+                                        'index':l.index,
+                                        'id' : l.id,
+                                        'column':l.column,
+                                        'row' : l.row,
+                                        'UI_visible':l.UI_visible,
+                                        'v_separator':l.v_separator})
+
 
         context.window_manager.clipboard = str(Layers)
+
         return {'FINISHED'}
 
 class PasteLayers(bpy.types.Operator):
@@ -33,10 +308,23 @@ class PasteLayers(bpy.types.Operator):
             BLayers.remove(0)
 
         try :
-            for layer_info in eval(context.window_manager.clipboard) :
+            Layers = eval(context.window_manager.clipboard)
+
+            BLayersSettings['presets'] = Layers['presets']
+
+            if layers_from == 'ARMATURE' :
+                for o,layers in BLayersSettings['objects'].items() :
+                    bone = context.object.data.bones.get(o)
+                    if bone:
+                        bone.layers = layers
+
+
+            for layer_info in Layers['layers'] :
                 layer = BLayers.add()
                 for attr,value in layer_info.items() :
                     setattr(layer,attr,value)
+
+            redraw_areas()
         except :
             self.report({'ERROR'},"Wrong ClipBoard")
 

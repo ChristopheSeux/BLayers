@@ -3,6 +3,22 @@ import bpy.utils.previews
 from os.path import join,basename,dirname,splitext
 from os import listdir
 
+
+def sort_layer(visible_layer):
+    sorted_layer = []
+
+    Column = {}
+    for l in visible_layer :
+        if not Column.get(l.column) :
+            Column[l.column] = []
+
+        Column[l.column].append(l)
+
+    for col,layers in sorted(Column.items()) :
+        sorted_layer.append(sorted(layers,key=lambda x : x.row))
+
+    return sorted_layer
+
 def update_col_index(collection) :
     for i,item in enumerate(collection) :
         item.col_index = i

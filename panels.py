@@ -1,6 +1,91 @@
 import bpy
 from . import utils
-from .utils import source_layers
+from .utils import source_layers,sort_layer
+
+
+
+
+
+class RigLayerPanel(bpy.types.Panel) :
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_label = "Rig Layers"
+
+    @classmethod
+    def poll(self,context) :
+        ob = context.object
+        return ob and ob.type == 'ARMATURE' and len(ob.data.BLayers.layers)
+
+
+    @staticmethod
+    def draw_header(self, context):
+        scene = context.scene
+        ob = context.object
+        if not context.object.data.library :
+            self.layout.prop(scene.BLayers, "layers_settings", text="",icon ='SCRIPTWIN' )
+
+    def draw(self, context):
+        layout = self.layout
+        scene = context.scene
+        ob = context.object
+        settings = scene.BLayers
+
+        BLayers = ob.data.BLayers
+
+        if settings.layers_settings :
+            layout.operator('blayers.add_layer_to_panel',text = 'Add Layers',icon='ZOOMIN')
+            #layout.operator('blayers.layer_preset',text = 'Basic').preset = 'BASIC'
+            #layout.operator('blayers.layer_preset',text = 'Complet').preset = 'COMPLET'
+            row = layout.row(align = True)
+            row.operator('blayers.move_rig_layers',icon = 'TRIA_DOWN',text='').operation ='DOWN'
+            row.operator('blayers.move_rig_layers',icon = 'TRIA_UP',text='').operation ='UP'
+            row.label('')
+            row.operator('blayers.move_rig_layers',icon = 'TRIA_DOWN_BAR',text='').operation ='MERGE'
+            row.operator('blayers.move_rig_layers',icon = 'TRIA_UP_BAR',text='').operation ='EXTRACT'
+
+            row.separator()
+            row.operator('blayers.layer_separator',icon = 'GRIP',text='').operation ='ADD'
+            row.operator('blayers.layer_separator',icon = 'PANEL_CLOSE',text='').operation ='REMOVE'
+
+            row.label('')
+            row.operator('blayers.move_rig_layers',icon = 'TRIA_LEFT',text='').operation ='LEFT'
+            row.operator('blayers.move_rig_layers',icon = 'TRIA_RIGHT',text='').operation ='RIGHT'
+
+
+        visible_layer = [l for l in BLayers.layers if l.UI_visible]
+
+        col = layout.column(align = True)
+        for col_index in sort_layer(visible_layer) :
+            col_separator = False
+            row = col.row(align = True)
+            for l in col_index :
+                if l.v_separator :
+                    col_separator = True
+
+                if settings.layers_settings and not ob.data.library :
+                    row.prop(l,"move",toggle = True,text = l.name)
+
+                else :
+                    row.prop(ob.data,"layers",index = l.index,toggle = True,text = l.name)
+
+            if col_separator :
+                col.separator()
+
+        row = layout.row(align=True)
+        if BLayers.get("presets") :
+            for preset in sorted(BLayers["presets"]):
+                apply_preset = row.operator('blayers.layer_preset_management',text=preset)
+                apply_preset.operation = 'APPLY'
+                apply_preset.preset = preset
+
+                if settings.layers_settings :
+                    remove = row.operator('blayers.layer_preset_management',icon='ZOOMOUT',text='')
+                    remove.operation = 'REMOVE'
+                    remove.preset = preset
+
+        if settings.layers_settings :
+            row.operator('blayers.layer_preset_management',icon='ZOOMIN',text='').operation = 'ADD'
+
 
 class CustomizeUIPrefs(bpy.types.AddonPreferences):
     bl_idname = 'BLayers'
@@ -284,7 +369,8 @@ class BLayersList(bpy.types.UIList):
         return flt_flags,[]
 
 
-class GPLayerPanel(bpy.types.Panel) :
+
+class LayerPanel(bpy.types.Panel) :
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'TOOLS'
     bl_label = "Layer Management"

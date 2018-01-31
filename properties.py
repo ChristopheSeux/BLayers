@@ -81,12 +81,35 @@ class LayersSettings(bpy.types.PropertyGroup):
     id = bpy.props.IntProperty(default = -1)
     col_index = bpy.props.IntProperty()
 
+    column = bpy.props.IntProperty(default = 0)
+    row = bpy.props.IntProperty(default = 0)
+
+    UI_visible = bpy.props.BoolProperty(default = False)
+    v_separator = bpy.props.BoolProperty(default = False)
 
 
-layer_type_items = easingItems = [
+
+layer_type_items = [
     ("AUTO", "", "", 'REC', 1),
     ("SCENE", "", "", 'SCENE_DATA', 2),
     ("ARMATURE", "", "", 'MOD_ARMATURE', 3)]
+
+
+
+def update_layers_preset(self,context):
+    BLayers = context.object.data.BLayers
+    layers_to_show =  [l for l in BLayers["presets"][BLayers.layers_preset_enum]]
+    for i,l in enumerate(context.object.data.layers):
+        if i in layers_to_show :
+            context.object.data.layers[i] = True
+        else :
+            context.object.data.layers[i] = False
+
+
+def layers_preset_items(self,context):
+    presets = context.object.data.BLayers["presets"]
+    return [(p.upper(),p.title(),"",i) for i,p in enumerate(sorted(presets))]
+
 
 
 class BLayersArmature(bpy.types.PropertyGroup) :
@@ -101,4 +124,6 @@ class BLayersScene(bpy.types.PropertyGroup) :
     show_index = bpy.props.BoolProperty(default = False)
     #bone_layers =
     active_index = bpy.props.IntProperty()
+    layers_settings = bpy.props.BoolProperty(default = False)
+
     #category = bpy.props.EnumProperty(items = gp_category)
